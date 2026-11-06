@@ -55,7 +55,9 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
-                abiFilters("arm64-v8a")
+                // x86_64 matters for emulators (MuMu / AVD): DexKit ships an x86_64 JNI
+                // library, and without it the whole deobfuscation pass cannot run there.
+                abiFilters("arm64-v8a", "x86_64")
                 arguments("-DANDROID_STL=none")
             }
         }
@@ -92,7 +94,9 @@ android {
             merges += "META-INF/xposed/*"
             excludes += "**"
         }
-        jniLibs.excludes.addAll(listOf("**/liblog.so", "/lib/x86/**", "/lib/x86_64/**"))
+        // Keep x86_64 so DexKit works on x86_64 emulators; 32-bit x86 is no longer
+        // supported by LSPosed 2.x and is still excluded.
+        jniLibs.excludes.addAll(listOf("**/liblog.so", "/lib/x86/**"))
     }
     buildFeatures {
         prefab = true

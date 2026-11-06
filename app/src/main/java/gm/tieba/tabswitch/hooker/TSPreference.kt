@@ -22,6 +22,7 @@ import gm.tieba.tabswitch.BuildConfig
 import gm.tieba.tabswitch.Constants.strings
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.AcRules.findRule
+import gm.tieba.tabswitch.dao.AcRules.isRuleFound
 import gm.tieba.tabswitch.dao.Preferences.commit
 import gm.tieba.tabswitch.dao.Preferences.getBoolean
 import gm.tieba.tabswitch.dao.Preferences.getIsAutoSignEnabled
@@ -66,6 +67,12 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
     }
 
     override fun hook() {
+        // On Tieba 22.13.1.1 the SmaliMatcher below no longer resolves. Without this flag the
+        // constructor-based proxy page hook is never registered, and tapping "贴吧TS设置" just
+        // opens an empty native MoreActivity. Remember whether the rule resolved so onCreate can
+        // render the preference page itself when it did not.
+        val proxyRuleAvailable = isRuleFound(*matchers().map { it.toString() }.toTypedArray())
+
         hookBeforeMethod(
             Dialog::class.java,
             "dismissDialog"
@@ -87,6 +94,31 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
             val scroll = parent.getChildAt(0) as ScrollView
             val containerView = scroll.getChildAt(0) as LinearLayout
             containerView.addView(createButton(MAIN, null, true) { startRootPreferenceActivity(activity) }, 11)
+
+            if (!proxyRuleAvailable) {
+                val proxyPage = activity.intent.getStringExtra("proxyPage")
+                    ?: return@hookAfterMethod
+                try {
+                    val preferenceLayout = when (proxyPage) {
+                        MAIN -> createRootPreference(activity)
+                        MODIFY_TAB -> createModifyTabPreference(activity)
+                        TRACE -> createHidePreference(activity)
+                        else -> null
+                    } ?: return@hookAfterMethod
+                    // The classic proxy page placed "重启" in the NavigationBar. MoreActivity has
+                    // no matching holder, so put it at the top of the preference list instead.
+                    preferenceLayout.addView(
+                        createButton("重启", null, true) { _ ->
+                            commit()
+                            restart(activity)
+                        }, 0
+                    )
+                    containerView.removeAllViews()
+                    containerView.addView(preferenceLayout)
+                } catch (tr: Throwable) {
+                    XposedBridge.log(tr)
+                }
+            }
         }
 
         findRule(matchers()) { _, clazz, _ ->

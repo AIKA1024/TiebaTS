@@ -60,14 +60,35 @@
 - **`NavigationBar` 支持嵌套查找**：新版部分 Activity 把导航栏放进 holder 对象，不再直接挂在 Activity 字段上。
 - **native 痕迹探针**改为检测 `io/github/libxposed/api/XposedInterface`，不再检测早已不存在的旧 `XposedBridge`。
 
-> 这只是**静态符号校验 + 源码级容错**，不等于真机逐项功能验证。24 条 DexKit 反混淆规则仍会在贴吧版本变化时
-> 于首次启动自动重算；个别功能是否生效需要在设备上确认。
+### 实机验证（2026-11-06）
+
+在 MuMu 虚拟机上完成了一次完整联调：Android 15 / x86_64、KernelSU 3.2.5 + ZygiskNext 1.5.2、
+**LSPosed 2.2.1 (7912) / Xposed API 102**、贴吧 **22.13.1.1**。已确认：
+
+- 模块在 `com.baidu.tieba` 及其 remote / bdservice / swan / media 等进程正常加载，
+  日志显示 `Framework LSPosed 2.2.1 (7912), Xposed API 102` 与 `TB client detected, version 22.13.1.1`，无任何异常堆栈。
+- **DexKit 反混淆在 x86_64 上跑通**（`Deobfuscation complete`）。为此把 `abiFilters` 扩到 `x86_64`，
+  并移除了 `packaging.jniLibs` 对 `lib/x86_64/**` 的排除；此前 DexKit 的 x86_64 库被构建配置过滤掉了。
+- 24 条规则中有 **6 条在 22.13.1.1 上失效**（`MetaData->getBazhuGradeData`、`AlaLiveTipView.<init>`、
+  `dimen.tbds400`、`purge_enter_on_success`、`PersonOftenFuncItemView.<init>`、
+  `AdAppStateManager.instance`），模块按设计降级继续运行而不是整体停摆。
+- **设置入口注入成功**：贴吧「设置」页出现「贴吧TS设置」；接受使用协议后可打开完整设置页，
+  开关显示与点击写入均正常（`TS_preferences.xml` 正确落盘）。由于上述第一条规则失效，
+  构造函数式的代理页 hook 无法注册，现已增加 `MoreActivity.onCreate` 的兜底渲染路径。
+- 通过直接写入偏好验证 hook 注册链路：`Enabled hooks` 从默认的 `ts_pref, fragment_tab`
+  正确扩展到包含 `purge_enter / purge_my / purge_video / auto_refresh` 等条目。
+
+> 以上仍是**加载链路与设置页**的验证，不代表 31 项功能逐项在新版贴吧上生效（例如净化效果、
+> 过滤规则的实际表现）仍需在日常使用中观察。
 
 ## 已知限制
 
 - **楼层点按效果（Ripple）**：新版贴吧重构了楼中楼布局，即使探测到候选类也可能无法生效，需实机调整。
-- **关注吧缓存**：依赖 protobuf 字段名 `like_forum`，若百度再次改协议需同步更新。
-- **native 库仅编译 arm64-v8a**（`abiFilters`）：32 位设备上隐藏/痕迹检测相关 native 功能不可用。
+- **关注吧缓存**：依赖 protobuf 字段名 `like_forum`；22.13.1.1 上未找到对应 Builder，日志会提示跳过该功能。
+- **6 条 DexKit 规则失效**（见上）：影响对应反混淆定位的功能，模块会降级运行。
+- **native 库编译 arm64-v8a 与 x86_64**；32 位设备只有 DexKit 的预编译库，`libhide` / `libcheck` 不可用。
+- 需 **LSPosed 2.1.0+**（API 102）。2.0.3 及更早版本提供的是 API 101，会因 `minApiVersion=102` 拒绝加载；
+  KernelSU 3.x 还需单独安装 ZygiskNext，否则框架不会注入 zygote。
 - 模块不再包含旧框架入口，降级安装旧版 LSPosed 会导致模块无法加载。
 - 24 条 DexKit 规则与部分硬编码类名仍需在每个新版贴吧上重新校验；本仓库的校验基准是 22.13.1.1。
 
@@ -93,7 +114,7 @@
 
 > 上游未配置 release 签名密钥（`app/gm.jks` 不在仓库中），所以 `assembleRelease` 产出的是**未签名** APK。
 > 若要安装 release 变体，需自行用 `apksigner` 签名；本次交付另外提供了一个用 Android debug keystore
-> 签名的 `TS_4.0.0-beta.11_release_signed.apk`。debug 与该文件使用同一证书，互为覆盖安装关系。
+> 签名的 `TS_4.0.0-beta.14_release_signed.apk`。debug 与该文件使用同一证书，互为覆盖安装关系。
 
 Windows 上若项目路径含非 ASCII 字符，AGP 8.5 会拒绝构建。**目录联接（junction）单独无效**，
 因为 AGP 检查的是真实路径；必须追加实验性开关（仅命令行传入，不写进仓库配置）：
