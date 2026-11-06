@@ -24,13 +24,19 @@ jobs:
           java-version: 17
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
+      # ubuntu-latest already ships an Android SDK. Avoid android-actions/setup-android@v3:
+      # it tries to install the retired "tools" package and fails with cmdline-tools 16.0.
       - name: Install SDK components
         run: |
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "ndk;28.2.13676358"
-          yes | sdkmanager --licenses > /dev/null || true
+          SDK="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          SDKM=$(find "$SDK/cmdline-tools" -name sdkmanager -type f | head -1)
+          echo "Using $SDKM"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "platforms;android-34" "build-tools;34.0.0"
+          # AGP downloads the pinned NDK on demand when sdkmanager cannot provide it.
+          "$SDKM" --install "ndk;28.2.13676358" || echo "NDK will be downloaded by AGP"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
 
       - name: Build debug APK
         run: bash ./gradlew assembleDebug --no-daemon --console=plain
@@ -42,6 +48,9 @@ jobs:
             unzip -l "$apk" | grep -q "META-INF/xposed/$entry" || { echo "missing $entry"; exit 1; }
           done
           unzip -p "$apk" META-INF/xposed/module.prop
+          if unzip -l "$apk" | grep -qE 'assets/(xposed|native)_init'; then
+            echo "legacy entry point still present"; exit 1
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
