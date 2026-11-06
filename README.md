@@ -2,8 +2,10 @@
 
 提供修改百度贴吧底栏等个性化功能的 Xposed 模块。An Xposed module for Baidu Tieba.
 
-> 本仓库是 [GuhDoy/TiebaTS](https://github.com/GuhDoy/TiebaTS) 的 fork。上游已于 **2024-08** 停止更新，
-> 最后适配的客户端是贴吧 **12.66.1.0**；本分支继续维护，迁移到现代 Xposed API 并适配贴吧 22.x。
+> 本仓库是 [GuhDoy/TiebaTS](https://github.com/GuhDoy/TiebaTS)（原作者 **GM**）的 fork，由 **AIKA1024** 维护。
+> 上游已于 **2024-08** 停止更新，最后适配的客户端是贴吧 **12.66.1.0**；
+> 本分支继续维护，迁移到现代 Xposed API 并适配贴吧 22.x。两者互不隶属，本分支的问题请发到
+> [本仓库 Issues](https://github.com/AIKA1024/TiebaTS/issues)。
 
 [![Android CI](https://github.com/AIKA1024/TiebaTS/actions/workflows/android.yml/badge.svg)](https://github.com/AIKA1024/TiebaTS/actions)
 
@@ -113,8 +115,11 @@
 ```
 
 > 上游未配置 release 签名密钥（`app/gm.jks` 不在仓库中），所以 `assembleRelease` 产出的是**未签名** APK。
-> 若要安装 release 变体，需自行用 `apksigner` 签名；本次交付另外提供了一个用 Android debug keystore
-> 签名的 `TS_4.0.0-beta.14_release_signed.apk`。debug 与该文件使用同一证书，互为覆盖安装关系。
+> [GitHub Releases](https://github.com/AIKA1024/TiebaTS/releases) 中提供的是用 Android debug keystore
+> 签名后的 release 包，与 debug 变体同一证书，两者互为覆盖安装关系；该证书不保密，请勿用于生产分发。
+
+版本号（`versionCode` / `versionName`）固定写在 `app/build.gradle.kts`，与发布 tag 一一对应；
+从 tag 重新构建可得到相同版本、可覆盖安装的 APK，不再依赖本地 git 提交数或 CI 浅克隆的深度。
 
 Windows 上若项目路径含非 ASCII 字符，AGP 8.5 会拒绝构建。**目录联接（junction）单独无效**，
 因为 AGP 检查的是真实路径；必须追加实验性开关（仅命令行传入，不写进仓库配置）：
@@ -130,8 +135,21 @@ Windows 上若项目路径含非 ASCII 字符，AGP 8.5 会拒绝构建。**目�
 同时配置了 `-adaptresourcefilecontents META-INF/xposed/java_init.list`，确保将来允许混淆时
 `java_init.list` 仍与 dex 中的类名一致。
 
+## 设置页署名
+
+模块内设置页「关于」一栏同时标注本分支与上游，避免用户误以为仍在用原版：
+
+| 条目 | 指向 |
+|---|---|
+| 本分支 / 维护者 / 源代码 / 问题反馈 / 适配信息 | AIKA1024/TiebaTS，弹窗展示分支来源、框架要求与模块版本 |
+| 原作者 / 上游项目 / TG群 | 原作者 GM 与 GuhDoy/TiebaTS，保留上游署名并明确标注为上游 |
+| 版本 | 本分支的 Releases（正式版）/ Actions（beta 版） |
+
+使用协议（EULA）与异常提示也已注明本版本为非官方分支，反馈入口指向本仓库 Issues。
+
 ## 致谢与协议
 
+- 本分支维护：[AIKA1024/TiebaTS](https://github.com/AIKA1024/TiebaTS)。
 - 原项目：[GuhDoy/TiebaTS](https://github.com/GuhDoy/TiebaTS) by GM，感谢其完整的反混淆与 Hook 规则设计。
 - 现代 API：[LSPosed/libxposed-api](https://github.com/JingMatrix/libxposed-api)。
 - 复制或参考 **hook 规则** 用于开发百度贴吧模块需遵守 [GNU GPL v3](https://choosealicense.com/licenses/gpl-3.0/)；

@@ -13,10 +13,8 @@ jobs:
     if: ${{ !startsWith(github.event.head_commit.message, '[skip ci]') }}
 
     steps:
-      - name: Checkout (full history for versionCode)
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4

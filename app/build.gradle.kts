@@ -1,37 +1,9 @@
-import java.io.ByteArrayOutputStream
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
 }
 
-fun String.runCommand(currentWorkingDir: File = file("./")): String {
-    val byteOut = ByteArrayOutputStream()
-    project.exec {
-        workingDir = currentWorkingDir
-        commandLine = this@runCommand.split("\\s".toRegex())
-        standardOutput = byteOut
-    }
-    return String(byteOut.toByteArray()).trim()
-}
-
-// A fresh fork or a shallow CI checkout may have no tags; keep versioning resilient.
-val gitCommitCount = try {
-    "git rev-list --count HEAD".runCommand().toInt()
-} catch (e: Exception) {
-    1
-}
-val latestTag = try {
-    "git describe --abbrev=0 --tags".runCommand()
-} catch (e: Exception) {
-    ""
-}
-val commitCountSinceLatestTag = if (latestTag.isEmpty()) "0" else try {
-    "git rev-list --count $latestTag..HEAD".runCommand()
-} catch (e: Exception) {
-    "0"
-}
 val sdk = 34
 
 android {
@@ -43,11 +15,11 @@ android {
         applicationId = "gm.tieba.tabswitch"
         minSdk = 28
         targetSdk = sdk
-        versionCode = gitCommitCount
-        versionName = "4.0.0-beta"
-        if (versionName!!.contains("alpha") || versionName!!.contains("beta")) {
-            versionNameSuffix = ".$commitCountSinceLatestTag"
-        }
+        // Published builds come from GitHub Releases. Pin both version fields to the source
+        // tree so rebuilding from a release tag yields the same APK and can upgrade over it.
+        // The old git-count scheme produced different codes locally and in shallow CI clones.
+        versionCode = 4000016
+        versionName = "4.0.0-beta.16"
         // Verified against Baidu Tieba 22.13.1.1 (APK built 2026-10-27).
         buildConfigField("String", "TARGET_VERSION", "\"22.13.1.1\"")
         buildConfigField("String", "MIN_VERSION", "\"22.0.0.0\"")
@@ -66,7 +38,7 @@ android {
         outputs
             .map { it as com.android.build.gradle.internal.api.ApkVariantOutputImpl }
             .all { output ->
-                output.outputFileName = "TS_${defaultConfig.versionName}${defaultConfig.versionNameSuffix ?: ""}_${name}.apk"
+                output.outputFileName = "TS_${defaultConfig.versionName}_${name}.apk"
                 false
             }
     }

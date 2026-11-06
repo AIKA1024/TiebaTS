@@ -219,6 +219,29 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
         }
     }
 
+    private fun openUri(activity: Activity, uri: String?) {
+        val target = uri ?: return
+        try {
+            activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+        } catch (tr: Throwable) {
+            // Some builds restrict external intents; never let the settings page crash.
+            XposedBridge.log(tr)
+        }
+    }
+
+    private fun showInfoDialog(activity: Activity, title: String, message: String, uri: String?) {
+        val builder = AlertDialog.Builder(activity, getDialogTheme(getContext()))
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(activity.getString(android.R.string.ok), null)
+        if (uri != null) {
+            builder.setNeutralButton("打开仓库") { _, _ -> openUri(activity, uri) }
+        }
+        val alert = builder.create()
+        alert.show()
+        fixAlertDialogWidth(alert)
+    }
+
     private fun createRootPreference(activity: Activity): LinearLayout {
         val isPurgeEnabled = getIsPurgeEnabled()
         val preferenceLayout = PreferenceLayout(activity)
@@ -312,7 +335,35 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
         })
 
         preferenceLayout.addView(createTextView(if (isPurgeEnabled) "关于就是关于" else "关于"))
-        preferenceLayout.addView(createButton("作者", "GM", true) { _ ->
+
+        // Upstream only credited GM here. Keep the original credit, but make it clear which
+        // fork is actually running and where users of this fork should go for help.
+        preferenceLayout.addView(createButton("本分支", "AIKA1024 · 非官方维护", true) { _ ->
+            showInfoDialog(
+                activity,
+                "关于本分支",
+                """
+                贴吧TS · AIKA1024 维护分支
+
+                原作者：GM（GuhDoy/TiebaTS，上游已于 2024-08 停止更新）
+                本分支：AIKA1024/TiebaTS，迁移到现代 Xposed API 102 并适配贴吧 22.x。
+
+                模块版本：%s（versionCode %d）
+                源码：github.com/AIKA1024/TiebaTS
+                反馈：github.com/AIKA1024/TiebaTS/issues
+
+                本分支为非官方维护版本，与上游作者无关；
+                上游的反混淆与 Hook 规则设计归原作者所有。
+                """.trimIndent().format(Locale.CHINA, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                strings["fork_uri"]
+            )
+        })
+
+        preferenceLayout.addView(createButton("维护者", "AIKA1024", true) { _ ->
+            openUri(activity, strings["fork_author_uri"])
+        })
+
+        preferenceLayout.addView(createButton("原作者", "GM · 上游项目", true) { _ ->
             sCount++
             if (sCount % 3 == 0) {
                 showTbToast(randomToast(), TbToast.LENGTH_SHORT)
@@ -323,30 +374,43 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
             }
         })
 
-        preferenceLayout.addView(createButton("源代码", "想要小星星", true) { _ ->
-            activity.startActivity(Intent().apply {
-                setAction("android.intent.action.VIEW")
-                setData(Uri.parse("https://github.com/GuhDoy/TiebaTS"))
-            })
+        preferenceLayout.addView(createButton("源代码", "AIKA1024/TiebaTS", true) { _ ->
+            openUri(activity, strings["fork_uri"])
         })
 
-        preferenceLayout.addView(createButton("TG群", "及时获取更新", true) { _ ->
-            activity.startActivity(Intent().apply {
-                setAction("android.intent.action.VIEW")
-                setData(Uri.parse("https://t.me/TabSwitch"))
-            })
+        preferenceLayout.addView(createButton("上游项目", "GuhDoy/TiebaTS", true) { _ ->
+            openUri(activity, strings["upstream_uri"])
+        })
+
+        preferenceLayout.addView(createButton("TG群", "上游原项目交流群", true) { _ ->
+            openUri(activity, strings["upstream_tg_uri"])
+        })
+
+        preferenceLayout.addView(createButton("适配信息", "API 102 · LSPosed 2.1+", true) { _ ->
+            showInfoDialog(
+                activity,
+                "适配信息",
+                """
+                框架：LSPosed 2.1.0+ 或其它实现 libxposed API 102 的框架。
+                KernelSU 3.x 需另装 ZygiskNext；LSPosed 1.x、EdXposed、原版 Xposed 不兼容。
+
+                目标客户端：百度贴吧 %s（最低 %s）。
+                作用域：com.baidu.tieba。
+
+                当前版本有 6 条 DexKit 规则在 22.13.1.1 上失效，模块会降级运行；
+                部分功能效果仍需实机逐项验证，详见仓库 README。
+                """.trimIndent().format(Locale.CHINA, BuildConfig.TARGET_VERSION, BuildConfig.MIN_VERSION),
+                strings["fork_uri"]
+            )
+        })
+
+        preferenceLayout.addView(createButton("问题反馈", "GitHub Issues", true) { _ ->
+            openUri(activity, strings["fork_issues_uri"])
         })
 
         preferenceLayout.addView(
-            createButton("版本", "%s".format(Locale.CHINA, BuildConfig.VERSION_NAME), true) { _ ->
-                activity.startActivity(Intent().apply {
-                    setAction("android.intent.action.VIEW")
-                    if (isModuleBetaVersion) {
-                        setData(Uri.parse(strings["ci_uri"]))
-                    } else {
-                        setData(Uri.parse(strings["release_uri"]))
-                    }
-                })
+            createButton("版本", "%s（API 102 fork）".format(Locale.CHINA, BuildConfig.VERSION_NAME), true) { _ ->
+                openUri(activity, if (isModuleBetaVersion) strings["ci_uri"] else strings["release_uri"])
             })
         return preferenceLayout
     }
