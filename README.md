@@ -88,8 +88,12 @@
 
 ```bash
 ./gradlew assembleDebug
-# 产物：app/build/outputs/apk/debug/
+# 产物：app/build/outputs/apk/debug/  （已带 v2 签名，可直接安装）
 ```
+
+> 上游未配置 release 签名密钥（`app/gm.jks` 不在仓库中），所以 `assembleRelease` 产出的是**未签名** APK。
+> 若要安装 release 变体，需自行用 `apksigner` 签名；本次交付另外提供了一个用 Android debug keystore
+> 签名的 `TS_4.0.0-beta.11_release_signed.apk`。debug 与该文件使用同一证书，互为覆盖安装关系。
 
 Windows 上若项目路径含非 ASCII 字符，AGP 8.5 会拒绝构建。**目录联接（junction）单独无效**，
 因为 AGP 检查的是真实路径；必须追加实验性开关（仅命令行传入，不写进仓库配置）：
