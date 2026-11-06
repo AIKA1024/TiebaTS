@@ -16,27 +16,41 @@ fun String.runCommand(currentWorkingDir: File = file("./")): String {
     return String(byteOut.toByteArray()).trim()
 }
 
-val gitCommitCount = "git rev-list --count HEAD".runCommand().toInt()
-val latestTag = "git describe --abbrev=0 --tags".runCommand()
-val commitCountSinceLatestTag = ("git rev-list --count $latestTag..HEAD").runCommand()
+// A fresh fork or a shallow CI checkout may have no tags; keep versioning resilient.
+val gitCommitCount = try {
+    "git rev-list --count HEAD".runCommand().toInt()
+} catch (e: Exception) {
+    1
+}
+val latestTag = try {
+    "git describe --abbrev=0 --tags".runCommand()
+} catch (e: Exception) {
+    ""
+}
+val commitCountSinceLatestTag = if (latestTag.isEmpty()) "0" else try {
+    "git rev-list --count $latestTag..HEAD".runCommand()
+} catch (e: Exception) {
+    "0"
+}
 val sdk = 34
 
 android {
     compileSdk = sdk
     buildToolsVersion = "34.0.0"
-    ndkVersion = "26.0.10792818"
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "gm.tieba.tabswitch"
         minSdk = 28
         targetSdk = sdk
         versionCode = gitCommitCount
-        versionName = "3.0.3-beta"
+        versionName = "4.0.0-beta"
         if (versionName!!.contains("alpha") || versionName!!.contains("beta")) {
             versionNameSuffix = ".$commitCountSinceLatestTag"
         }
-        buildConfigField("String", "TARGET_VERSION", "\"12.66.1.0\"")
-        buildConfigField("String", "MIN_VERSION", "\"12.53.1.0\"")
+        // Verified against Baidu Tieba 22.13.1.1 (APK built 2026-10-27).
+        buildConfigField("String", "TARGET_VERSION", "\"22.13.1.1\"")
+        buildConfigField("String", "MIN_VERSION", "\"22.0.0.0\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -64,13 +78,20 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
     externalNativeBuild {
         cmake {
             path("src/main/cpp/CMakeLists.txt")
         }
     }
     packaging {
-        resources.excludes.addAll(listOf("/META-INF/**", "/kotlin/**", "/okhttp3/**"))
+        resources {
+            // The modern Xposed manifest lives in Java resources; keep it in the APK.
+            merges += "META-INF/xposed/*"
+            excludes += "**"
+        }
         jniLibs.excludes.addAll(listOf("**/liblog.so", "/lib/x86/**", "/lib/x86_64/**"))
     }
     buildFeatures {
@@ -84,7 +105,8 @@ android {
 }
 
 dependencies {
-    compileOnly("de.robv.android.xposed:api:82")
+    // Modern libxposed API 102. A module targeting 102 cannot access de.robv.android.xposed.
+    compileOnly("io.github.libxposed:api:102.0.0")
     api("androidx.annotation:annotation:1.7.1")
 
     val roomVersion = "2.6.1"

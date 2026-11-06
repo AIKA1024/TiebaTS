@@ -16,7 +16,8 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.ScrollView
-import de.robv.android.xposed.XposedBridge
+import gm.tieba.tabswitch.compat.XposedBridge
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.BuildConfig
 import gm.tieba.tabswitch.Constants.strings
 import gm.tieba.tabswitch.XposedContext
@@ -369,7 +370,16 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
         const val MAIN: String = "贴吧TS设置"
         const val MODIFY_TAB: String = "修改页面"
         const val TRACE: String = "痕迹"
-        private const val PROXY_ACTIVITY = "com.baidu.tieba.setting.im.more.SecretSettingActivity"
+        private val PROXY_ACTIVITY: String by lazy {
+            // Verified against Tieba 22.13.1.1: SecretSettingActivity was removed, while both
+            // MoreActivity and PersonCenterMoreActivity still exist in the dex.
+            listOf(
+                "com.baidu.tieba.setting.im.more.SecretSettingActivity",
+                "com.baidu.tieba.setting.more.MoreActivity",
+                "com.baidu.tieba.person.more.PersonCenterMoreActivity"
+            ).firstOrNull { XposedHelpers.findClassIfExists(it) != null }
+                ?: "com.baidu.tieba.setting.more.MoreActivity"
+        }
         private var sCount = 0
     }
 }

@@ -72,16 +72,5 @@ fun getParent(path: String): String {
     return path.substring(0, path.lastIndexOf(File.separatorChar))
 }
 
-fun getAssetFileContent(filename: String?): String? {
-    return try {
-        filename?.let { name ->
-            XposedContext.sAssetManager.open(name).use { inputStream ->
-                inputStream.bufferedReader().use { reader ->
-                    reader.readText()
-                }
-            }
-        }
-    } catch (ignored: IOException) {
-        null
-    }
-}
+fun getAssetFileContent(filename: String?): String? =
+    filename?.let { name -> XposedContext.readModuleAsset(name) }

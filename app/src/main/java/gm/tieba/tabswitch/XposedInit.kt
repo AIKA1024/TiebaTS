@@ -2,22 +2,27 @@ package gm.tieba.tabswitch
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.app.AppComponentFactory
 import android.app.Application
 import android.app.Instrumentation
 import android.content.Intent
-import android.content.res.XModuleResources
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.TextUtils
-import de.robv.android.xposed.IXposedHookLoadPackage
-import de.robv.android.xposed.IXposedHookZygoteInit
-import de.robv.android.xposed.IXposedHookZygoteInit.StartupParam
-import de.robv.android.xposed.XposedBridge
-import de.robv.android.xposed.XposedHelpers
-import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam
 import gm.tieba.tabswitch.Constants.strings
+import gm.tieba.tabswitch.XposedContext.Companion.attachBaseContext
+import gm.tieba.tabswitch.XposedContext.Companion.exceptions
+import gm.tieba.tabswitch.XposedContext.Companion.findClass
+import gm.tieba.tabswitch.XposedContext.Companion.framework
+import gm.tieba.tabswitch.XposedContext.Companion.getContext
+import gm.tieba.tabswitch.XposedContext.Companion.hookAfterMethod
+import gm.tieba.tabswitch.XposedContext.Companion.hookBeforeMethod
+import gm.tieba.tabswitch.XposedContext.Companion.isModuleBetaVersion
+import gm.tieba.tabswitch.XposedContext.Companion.sClassLoader
+import gm.tieba.tabswitch.XposedContext.Companion.sPath
+import gm.tieba.tabswitch.XposedContext.Companion.sProcessName
+import gm.tieba.tabswitch.compat.XposedBridge
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.dao.AcRules
 import gm.tieba.tabswitch.dao.AcRules.isRuleFound
 import gm.tieba.tabswitch.dao.Adp.initializeAdp
@@ -69,30 +74,47 @@ import gm.tieba.tabswitch.hooker.extra.StackTrace
 import gm.tieba.tabswitch.util.fixAlertDialogWidth
 import gm.tieba.tabswitch.util.getDialogTheme
 import gm.tieba.tabswitch.widget.TbToast
+import io.github.libxposed.api.XposedModule
+import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
+import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
 import java.util.Locale
-import kotlin.String
 
-class XposedInit : XposedContext(), IXposedHookZygoteInit, IXposedHookLoadPackage {
+/**
+ * Module entry for the modern libxposed API 102.
+ *
+ * The framework instantiates this class, attaches itself, then calls [onModuleLoaded] followed by
+ * [onPackageReady]. There is no zygote injection and no `assets/xposed_init`; the declaration lives
+ * in `META-INF/xposed/java_init.list`.
+ */
+class XposedInit : XposedModule() {
 
-    private lateinit var mAppComponentFactory: AppComponentFactory
-
-    override fun initZygote(startupParam: StartupParam) {
-        sPath = startupParam.modulePath
+    /**
+     * Idempotent: [onModuleLoaded] normally runs first, but a framework may deliver the package
+     * lifecycle callbacks in a different order. Both entry points must leave the context usable.
+     */
+    private fun attachFramework() {
+        framework = this
+        sPath = getModuleApplicationInfo().sourceDir
     }
 
-    override fun handleLoadPackage(lpparam: LoadPackageParam) {
-        if (("com.baidu.tieba" != lpparam.packageName && XposedHelpers.findClassIfExists(
-                "com.baidu.tieba.tblauncher.MainTabActivity", lpparam.classLoader
-            ) == null)) return
-
+    override fun onModuleLoaded(param: ModuleLoadedParam) {
+        attachFramework()
+        sProcessName = param.processName
         XposedBridge.log("Loading TiebaTS, version ${BuildConfig.VERSION_CODE}")
+        XposedBridge.log(
+            "Framework ${getFrameworkName()} ${getFrameworkVersion()} " +
+                "(${getFrameworkVersionCode()}), Xposed API ${getApiVersion()}"
+        )
+    }
 
-        sClassLoader = lpparam.classLoader
-        sAssetManager = XModuleResources.createInstance(sPath, null).assets
-        mAppComponentFactory = sClassLoader.loadClass("com.baidu.nps.hook.component.NPSComponentFactory")
-            .getDeclaredConstructor().newInstance() as AppComponentFactory
+    override fun onPackageReady(packageParam: PackageReadyParam) {
+        if (packageParam.packageName != "com.baidu.tieba" || !packageParam.isFirstPackage) return
+        attachFramework()
 
-        // For some reason certain flutter page will not load in LSPatch unless we manually load the flutter plugin
+        sClassLoader = packageParam.classLoader
+        val appComponentFactory = packageParam.appComponentFactory
+
+        // Certain Flutter pages do not load in LSPatch unless the plugin is loaded manually.
         hookAfterMethod(
             "com.baidu.tieba.flutter.FlutterPluginManager",
             "invokePlugin", "com.baidu.nps.main.invoke.IInvokeCallback"
@@ -126,10 +148,7 @@ class XposedInit : XposedContext(), IXposedHookZygoteInit, IXposedHookLoadPackag
             DeobfuscationHelper.sCurrentTbVersion = getTbVersion(getContext())
             XposedBridge.log("TB client detected, version ${DeobfuscationHelper.sCurrentTbVersion}")
 
-            // Workaround to address an issue with LSPatch (unable to open personal homepage)
-            // com.baidu.tieba.flutter.base.view.FlutterPageActivity must be instantiated by com.baidu.nps.hook.component.NPSComponentFactory
-            // However, LSPatch incorrectly sets appComponentFactory to null, causing android.app.Instrumentation.getFactory to fall back to AppComponentFactory.DEFAULT
-            // (see https://github.com/LSPosed/LSPatch/blob/bbe8d93fb9230f7b04babaf1c4a11642110f55a6/patch-loader/src/main/java/org/lsposed/lspatch/loader/LSPApplication.java#L173)
+            // LSPatch sets appComponentFactory to null, which breaks FlutterPageActivity.
             if (getContext().applicationInfo.appComponentFactory == null) {
                 XposedBridge.log("Applying LSPatch workaround")
                 hookAfterMethod(
@@ -137,7 +156,7 @@ class XposedInit : XposedContext(), IXposedHookZygoteInit, IXposedHookLoadPackag
                     "getFactory", String::class.java
                 ) { hookParam ->
                     if (hookParam.args[0].toString() == "com.baidu.tieba") {
-                        hookParam.result = mAppComponentFactory
+                        hookParam.result = appComponentFactory
                     }
                 }
             }
@@ -185,7 +204,7 @@ class XposedInit : XposedContext(), IXposedHookZygoteInit, IXposedHookLoadPackag
 
             val matchersList = matchers.flatMap { it.matchers() }.toMutableList()
 
-            // Remove matchers that does not satisfy version requirement
+            // Remove matchers that do not satisfy the version requirement.
             matchersList.removeIf { matcher ->
                 matcher.requiredVersion?.let { requiredVersion ->
                     val isVersionSatisfied = isTbSatisfyVersionRequirement(requiredVersion)
@@ -205,7 +224,7 @@ class XposedInit : XposedContext(), IXposedHookZygoteInit, IXposedHookLoadPackag
             }
 
             if (isVersionChanged(getContext())) {
-                if ("com.baidu.tieba" == lpparam.processName) {
+                if ("com.baidu.tieba" == sProcessName) {
                     hookAfterMethod(
                         "com.baidu.tieba.tblauncher.MainTabActivity",
                         "onCreate", Bundle::class.java
@@ -225,7 +244,20 @@ class XposedInit : XposedContext(), IXposedHookZygoteInit, IXposedHookLoadPackag
 
             val lostList = matchersList.map { it.toString() }.filter { !isRuleFound(it) }
 
+            // On Tieba 22.x a handful of DexKit rules legitimately disappear (removed protobuf
+            // holders, renamed activities). Upstream aborted here and loaded ZERO hookers, which
+            // disabled every feature. Keep the warning but let each Hooker install independently;
+            // hookers.forEach below already isolates failures per hooker.
             if (lostList.isNotEmpty()) {
+                XposedBridge.log(
+                    "TiebaTS: %d of %d deobfuscation rule(s) unavailable, continuing with reduced coverage: %s"
+                        .format(Locale.CHINA, lostList.size, matchersList.size, lostList)
+                )
+                exceptions["lost_rules"] = IllegalStateException(lostList.joinToString(", "))
+            }
+
+            // Only interrupt the user when most rules are gone (e.g. a wholly unsupported build).
+            if (lostList.size >= matchersList.size / 2 && matchersList.isNotEmpty()) {
                 hookBeforeMethod(
                     "com.baidu.tieba.tblauncher.MainTabActivity",
                     "onCreate", Bundle::class.java
@@ -241,6 +273,7 @@ class XposedInit : XposedContext(), IXposedHookZygoteInit, IXposedHookLoadPackag
                         )
                         add("贴吧版本：%s, 模块版本：%d".format(Locale.CHINA, DeobfuscationHelper.sCurrentTbVersion, BuildConfig.VERSION_CODE))
                         add("%d rule(s) lost: %s".format(Locale.CHINA, lostList.size, lostList))
+                        add("模块仍会继续加载，缺失规则对应的功能可能不可用。")
                     }
                     val message = TextUtils.join("\n", messages)
                     XposedBridge.log(message)
@@ -271,10 +304,14 @@ class XposedInit : XposedContext(), IXposedHookZygoteInit, IXposedHookLoadPackag
                     alert.show()
                     fixAlertDialogWidth(alert)
                 }
-                return@hookAfterMethod
+                // No early return: install the remaining hookers regardless.
             }
 
             initializeAdp()
+            // META-INF/xposed/native_init.list makes the framework dlopen libhide.so and call its
+            // native_init() to supply NativeAPIEntries.hook_func. loadLibrary() then triggers
+            // JNI_OnLoad, which installs the FindClass disguise. Keep the upstream order: the
+            // library must NOT be loaded through System.load() here or hook_func would be null.
             if (getBoolean("hide_native")) {
                 try {
                     System.loadLibrary("hide")

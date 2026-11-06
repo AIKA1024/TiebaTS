@@ -19,8 +19,8 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import de.robv.android.xposed.XposedBridge
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedBridge
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.Constants.strings
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.Preferences.getBoolean

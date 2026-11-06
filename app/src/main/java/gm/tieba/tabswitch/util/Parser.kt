@@ -2,7 +2,7 @@
 
 package gm.tieba.tabswitch.util
 
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedHelpers
 
 fun parsePbContent(instance: Any?, fieldName: String?): String {
     val contents = XposedHelpers.getObjectField(instance, fieldName) as? List<*> ?: return ""

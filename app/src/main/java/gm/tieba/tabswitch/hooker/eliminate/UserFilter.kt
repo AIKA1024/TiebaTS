@@ -1,13 +1,13 @@
 package gm.tieba.tabswitch.hooker.eliminate
 
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.hooker.IHooker
 import java.util.regex.Pattern
 
 class UserFilter : XposedContext(), IHooker, RegexFilter {
 
-    private val mIds: MutableSet<Any> = HashSet()
+    private val mIds: MutableSet<Any?> = HashSet()
 
     override fun key(): String {
         return "user_filter"

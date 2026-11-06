@@ -2,7 +2,7 @@ package gm.tieba.tabswitch.hooker.eliminate
 
 import android.view.View
 import android.view.ViewGroup
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.AcRules.findRule
 import gm.tieba.tabswitch.dao.Preferences.getBoolean

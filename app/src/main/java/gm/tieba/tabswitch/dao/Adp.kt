@@ -1,6 +1,7 @@
 package gm.tieba.tabswitch.dao
 
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedBridge
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.Preferences.putLikeForum
 
@@ -27,8 +28,23 @@ object Adp : XposedContext() {
     }
 
     private fun refreshCache() {
-        hookBeforeMethod("tbclient.ForumRecommend.DataRes\$Builder",
-            "build", Boolean::class.javaPrimitiveType) { param ->
+        // Tieba 22.x renamed the protobuf holder. Locate whichever Builder still owns
+        // `like_forum` instead of assuming one version's class name / build() signature.
+        val builder = listOf(
+            "tbclient.ForumRecommend.DataRes\$Builder",
+            "tbclient.ForumRecommend.NewRecommend\$Builder",
+            "tbclient.ForumRecommend.LikeForum\$Builder"
+        ).firstNotNullOfOrNull { name ->
+            XposedHelpers.findClassIfExists(name)?.takeIf { clazz ->
+                clazz.declaredFields.any { it.name == "like_forum" }
+            }
+        }
+        val build = builder?.declaredMethods?.firstOrNull { it.name == "build" }
+        if (build == null) {
+            XposedBridge.log("TiebaTS: no ForumRecommend builder with like_forum, skipping follow cache")
+            return
+        }
+        hookBeforeMethod(build) { param ->
             val forums: MutableSet<String?> = HashSet()
             val likeForumList = XposedHelpers.getObjectField(param.thisObject, "like_forum") as? List<*>
             likeForumList?.forEach { forums.add(XposedHelpers.getObjectField(it, "forum_name") as String) }

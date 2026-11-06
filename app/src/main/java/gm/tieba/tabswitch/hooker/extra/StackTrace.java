@@ -6,9 +6,9 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XposedBridge;
-import de.robv.android.xposed.XposedHelpers;
+import gm.tieba.tabswitch.compat.XC_MethodHook;
+import gm.tieba.tabswitch.compat.XposedBridge;
+import gm.tieba.tabswitch.compat.XposedHelpers;
 import gm.tieba.tabswitch.XposedContext;
 import gm.tieba.tabswitch.hooker.IHooker;
 
@@ -23,10 +23,10 @@ public class StackTrace extends XposedContext implements IHooker {
 
     @Override
     public void hook() throws Throwable {
-        for (final Method method : XposedHelpers.findClass("com.baidu.tieba.LogoActivity", sClassLoader).getDeclaredMethods()) {
+        for (final Method method : XposedHelpers.findClass("com.baidu.tieba.LogoActivity").getDeclaredMethods()) {
             XposedBridge.hookMethod(method, new XC_MethodHook() {
                 @Override
-                protected void beforeHookedMethod(final MethodHookParam param) throws Throwable {
+                public void beforeHookedMethod(final MethodHookParam param) throws Throwable {
                     final List<String> sts = new ArrayList<>();
                     final StackTraceElement[] stes = Thread.currentThread().getStackTrace();
                     boolean isXposedStackTrace = false;

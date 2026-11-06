@@ -16,7 +16,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://api.xposed.info/") }
+        // libxposed API 102 is published to Maven Central; the legacy xposed.info repo is gone.
     }
 }
 rootProject.name = "贴吧TS"

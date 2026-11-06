@@ -2,7 +2,7 @@ package gm.tieba.tabswitch.hooker.auto
 
 import android.app.Activity
 import android.os.Build
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.hooker.IHooker
 import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper.isTbSatisfyVersionRequirement

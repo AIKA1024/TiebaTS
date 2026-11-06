@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.ViewGroup
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.AcRules.findRule
 import gm.tieba.tabswitch.hooker.IHooker

@@ -1,7 +1,7 @@
 package gm.tieba.tabswitch.hooker.auto
 
 import android.os.Bundle
-import de.robv.android.xposed.XposedBridge
+import gm.tieba.tabswitch.compat.XposedBridge
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.Adp
 import gm.tieba.tabswitch.dao.Preferences.getIsSigned

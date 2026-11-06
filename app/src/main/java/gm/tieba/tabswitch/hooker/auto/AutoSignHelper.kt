@@ -1,6 +1,6 @@
 package gm.tieba.tabswitch.hooker.auto
 
-import de.robv.android.xposed.XposedBridge
+import gm.tieba.tabswitch.compat.XposedBridge
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request

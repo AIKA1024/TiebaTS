@@ -10,7 +10,8 @@ import android.util.AttributeSet
 import android.util.SparseArray
 import android.view.View
 import android.widget.RelativeLayout
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedBridge
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.hooker.IHooker
 import gm.tieba.tabswitch.util.dipToPx
@@ -25,19 +26,30 @@ class Ripple : XposedContext(), IHooker {
     }
 
     override fun hook() {
-
-        val subPbLayoutClass = try {
-            findClass("com.baidu.tieba.pb.pb.sub.SubPbLayout")
-        } catch (e: XposedHelpers.ClassNotFoundError) {
-            findClass("com.baidu.tieba.pb.sub.view.SubPbLayout")
+        val subPbLayoutName = listOf(
+            "com.baidu.tieba.pb.pb.sub.SubPbLayout",
+            "com.baidu.tieba.pb.sub.view.SubPbLayout",
+            "com.baidu.tieba.pb.databinding.NewSubPbLayoutBinding"
+        ).firstOrNull { XposedHelpers.findClassIfExists(it) != null }
+        if (subPbLayoutName == null) {
+            XposedBridge.log("TiebaTS: SubPbLayout not found, ripple disabled on this build")
+            return
         }
+        val subPbLayoutClass = findClass(subPbLayoutName)
 
-        // 楼中楼
-        val md: Method = try {
-            subPbLayoutClass.declaredFields[4].type.getDeclaredMethod("createView")
-        } catch (e: NoSuchMethodException) {
-            subPbLayoutClass.declaredFields[4].type.getDeclaredMethod("b")
+        // 楼中楼: find the holder that exposes the view factory instead of indexing fields.
+        val holderType = subPbLayoutClass.declaredFields
+            .map { it.type }
+            .firstOrNull { type ->
+                type.declaredMethods.any { it.name == "createView" || it.name == "b" }
+            }
+        if (holderType == null) {
+            XposedBridge.log("TiebaTS: SubPb view factory not found, ripple disabled on this build")
+            return
         }
+        val md: Method = holderType.declaredMethods.firstOrNull {
+            it.name == "createView" || it.name == "b"
+        } ?: return
 
         hookAfterMethod(md) { param ->
             val newSubPbListItem = param.result as View

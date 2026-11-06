@@ -58,8 +58,11 @@ static inline void fill_java_lang_VMClassLoader(char v[]) {
     v[0x17] = '\0';
 }
 
-static inline void fill_de_robv_android_xposed_XposedBridge(char v[]) {
-    // de/robv/android/xposed/XposedBridge
+static inline void fill_io_github_libxposed_api_XposedInterface(char v[]) {
+    // Modern framework probe target: io/github/libxposed/api/XposedInterface.
+    // Xposed API 102 modules never load de/robv/android/xposed/XposedBridge, so the old probe
+    // always reported a false negative. Same XOR obfuscation scheme as the other literals here
+    // (plain[i] XOR ((i + len) modulo m)), regenerated for the new class name.
     static unsigned int m = 0;
 
     if (m == 0) {
@@ -68,47 +71,50 @@ static inline void fill_de_robv_android_xposed_XposedBridge(char v[]) {
         m = 41;
     }
 
-    v[0x0] = '`';
-    v[0x1] = '`';
-    v[0x2] = ')';
-    v[0x3] = 'u';
-    v[0x4] = 'g';
-    v[0x5] = 'k';
-    v[0x6] = '|';
-    v[0x7] = '$';
-    v[0x8] = 'm';
-    v[0x9] = 'c';
-    v[0xa] = 'j';
-    v[0xb] = '}';
-    v[0xc] = '\x7f';
-    v[0xd] = 'x';
-    v[0xe] = 'v';
-    v[0xf] = '<';
-    v[0x10] = 'l';
-    v[0x11] = 'e';
-    v[0x12] = 'y';
-    v[0x13] = 'd';
+    v[0x00] = 'a';
+    v[0x01] = 'f';
+    v[0x02] = '%';
+    v[0x03] = 'l';
+    v[0x04] = 'e';
+    v[0x05] = 'y';
+    v[0x06] = 'f';
+    v[0x07] = 'z';
+    v[0x08] = 'r';
+    v[0x09] = '>';
+    v[0x0a] = '~';
+    v[0x0b] = 'z';
+    v[0x0c] = 'v';
+    v[0x0d] = 'm';
+    v[0x0e] = 'f';
+    v[0x0f] = 'x';
+    v[0x10] = 'k';
+    v[0x11] = '|';
+    v[0x12] = '~';
+    v[0x13] = '4';
     v[0x14] = '}';
-    v[0x15] = '}';
-    v[0x16] = '5';
-    v[0x17] = 'C';
-    v[0x18] = 'l';
+    v[0x15] = 'm';
+    v[0x16] = 'w';
+    v[0x17] = '/';
+    v[0x18] = 'Y';
     v[0x19] = 'r';
-    v[0x1a] = 'm';
-    v[0x1b] = 'e';
-    v[0x1c] = 'e';
-    v[0x1d] = '@';
-    v[0x1e] = 'q';
-    v[0x1f] = 'm';
-    v[0x20] = 'a';
-    v[0x21] = 'a';
-    v[0x22] = 'b';
-    for (unsigned int i = 0; i < 0x23; ++i) {
-        v[i] ^= ((i + 0x23) % m);
+    v[0x1a] = 'l';
+    v[0x1b] = 'w';
+    v[0x1c] = '`';
+    v[0x1d] = 'b';
+    v[0x1e] = 'N';
+    v[0x1f] = 'f';
+    v[0x20] = '}';
+    v[0x21] = 'o';
+    v[0x22] = 'y';
+    v[0x23] = 'j';
+    v[0x24] = 'l';
+    v[0x25] = 'm';
+    v[0x26] = 'j';
+    for (unsigned int i = 0; i < 0x27; ++i) {
+        v[i] ^= ((i + 0x27) % m);
     }
-    v[0x23] = '\0';
+    v[0x27] = '\0';
 }
-
 static inline void fill_findLoadedClass(char v[]) {
     // findLoadedClass
     static unsigned int m = 0;
@@ -394,6 +400,6 @@ clean:
 
 jclass findXposedBridge(JNIEnv *env, jobject classLoader) {
     char v1[0x80];
-    fill_de_robv_android_xposed_XposedBridge(v1);
+    fill_io_github_libxposed_api_XposedInterface(v1);
     return findLoadedClass(env, classLoader, v1);
 }

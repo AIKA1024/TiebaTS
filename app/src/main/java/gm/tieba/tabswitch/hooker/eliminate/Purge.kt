@@ -8,10 +8,10 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import de.robv.android.xposed.XC_MethodReplacement
-import de.robv.android.xposed.XposedBridge
-import de.robv.android.xposed.XposedHelpers
-import de.robv.android.xposed.XposedHelpers.ClassNotFoundError
+import gm.tieba.tabswitch.compat.XC_MethodReplacement
+import gm.tieba.tabswitch.compat.XposedBridge
+import gm.tieba.tabswitch.compat.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedHelpers.ClassNotFoundError
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.AcRules.findRule
 import gm.tieba.tabswitch.hooker.IHooker
@@ -152,9 +152,16 @@ class Purge : XposedContext(), IHooker, Obfuscated {
             }
         }
 
-        // 热启动闪屏
-        hookReplaceMethod("com.baidu.tbadk.TbSingleton", "isPushLaunch4SplashAd") { true }
-        hookReplaceMethod("com.baidu.tbadk.abtest.UbsABTestHelper", "isPushLaunchWithoutSplashAdA") { true }
+        // 热启动闪屏：22.x 可能移除/改名这两个方法，缺失时不应中断整个 Purge Hooker。
+        listOf(
+            "com.baidu.tbadk.TbSingleton" to "isPushLaunch4SplashAd",
+            "com.baidu.tbadk.abtest.UbsABTestHelper" to "isPushLaunchWithoutSplashAdA"
+        ).forEach { (clazz, method) ->
+            runCatching { hookReplaceMethod(clazz, method) { true } }
+                .onFailure { tr ->
+                    XposedBridge.log("TiebaTS: skipped optional hook $clazz#$method: ${tr.javaClass.simpleName}")
+                }
+        }
 
         // Fix bugs related to isPushLaunch4SplashAd
         hookAfterMethodPriority(

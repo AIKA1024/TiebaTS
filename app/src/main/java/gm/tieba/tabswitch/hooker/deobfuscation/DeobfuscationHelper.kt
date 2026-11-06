@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import de.robv.android.xposed.XposedBridge
+import gm.tieba.tabswitch.compat.XposedBridge
 import gm.tieba.tabswitch.XposedContext.Companion.hookBeforeMethod
 import gm.tieba.tabswitch.dao.Preferences.getSignature
 import gm.tieba.tabswitch.util.restart

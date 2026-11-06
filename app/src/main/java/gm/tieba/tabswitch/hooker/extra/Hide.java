@@ -5,8 +5,8 @@ import androidx.annotation.NonNull;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XposedHelpers;
+import gm.tieba.tabswitch.compat.XC_MethodHook;
+import gm.tieba.tabswitch.compat.XposedHelpers;
 import gm.tieba.tabswitch.BuildConfig;
 import gm.tieba.tabswitch.XposedContext;
 import gm.tieba.tabswitch.hooker.IHooker;
@@ -28,7 +28,7 @@ public class Hide extends XposedContext implements IHooker {
         for (final Class<?> clazz : new Class<?>[]{Throwable.class, Thread.class}) {
             XposedHelpers.findAndHookMethod(clazz, "getStackTrace", new XC_MethodHook() {
                 @Override
-                protected void afterHookedMethod(final MethodHookParam param) throws Throwable {
+                public void afterHookedMethod(final MethodHookParam param) throws Throwable {
                     final StackTraceElement[] stes = (StackTraceElement[]) param.getResult();
                     final List<StackTraceElement> filtered = new ArrayList<>();
                     for (final StackTraceElement ste : stes) {

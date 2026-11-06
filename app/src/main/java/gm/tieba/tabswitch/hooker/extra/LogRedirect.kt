@@ -1,6 +1,6 @@
 package gm.tieba.tabswitch.hooker.extra
 
-import de.robv.android.xposed.XposedBridge
+import gm.tieba.tabswitch.compat.XposedBridge
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.hooker.IHooker
 

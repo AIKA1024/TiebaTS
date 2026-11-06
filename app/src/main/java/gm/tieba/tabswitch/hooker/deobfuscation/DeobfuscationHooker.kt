@@ -15,8 +15,8 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
-import de.robv.android.xposed.XC_MethodHook
-import de.robv.android.xposed.XposedBridge
+import gm.tieba.tabswitch.compat.XC_MethodHook
+import gm.tieba.tabswitch.compat.XposedBridge
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.AcRules.dropAllRules
 import gm.tieba.tabswitch.dao.Preferences.getBoolean

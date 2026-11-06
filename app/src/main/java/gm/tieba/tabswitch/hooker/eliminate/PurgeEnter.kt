@@ -2,8 +2,8 @@ package gm.tieba.tabswitch.hooker.eliminate
 
 import android.view.View
 import android.widget.LinearLayout
-import de.robv.android.xposed.XposedHelpers
-import de.robv.android.xposed.XposedHelpers.ClassNotFoundError
+import gm.tieba.tabswitch.compat.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedHelpers.ClassNotFoundError
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.AcRules.findRule
 import gm.tieba.tabswitch.hooker.IHooker
@@ -42,10 +42,14 @@ class PurgeEnter : XposedContext(), IHooker, Obfuscated {
     }
 
     override fun hook() {
-        hookReplaceMethod(
-            "com.baidu.tieba.enterForum.recforum.message.RecommendForumRespondedMessage",
-            "getRecommendForumData"
-        ) { null }
+        // Removed in Tieba 22.x. Skip silently instead of failing the whole hooker.
+        val respondedMessage = XposedHelpers.findClassIfExists(
+            "com.baidu.tieba.enterForum.recforum.message.RecommendForumRespondedMessage"
+        )
+        val getData = respondedMessage?.let {
+            XposedHelpers.findMethodExactIfExists(it, "getRecommendForumData")
+        }
+        getData?.let { hookReplaceMethod(it) { null } }
 
         mPbListViewInnerViewConstructorName = findClass("com.baidu.tbadk.core.view.PbListView").superclass.declaredMethods.find { method ->
             method.returnType.toString().endsWith("View") && !Modifier.isAbstract(method.modifiers)

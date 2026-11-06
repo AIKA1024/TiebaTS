@@ -8,8 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.view.WindowManager
-import de.robv.android.xposed.XposedBridge
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedBridge
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.XposedContext
 import kotlin.math.roundToInt
 import kotlin.system.exitProcess

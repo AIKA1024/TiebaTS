@@ -1,6 +1,6 @@
 package gm.tieba.tabswitch.hooker.eliminate
 
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.Preferences.getLikeForum
 import gm.tieba.tabswitch.hooker.IHooker

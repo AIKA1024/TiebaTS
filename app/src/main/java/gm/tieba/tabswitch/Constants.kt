@@ -11,7 +11,7 @@ object Constants {
         "version_mismatch" to "当前贴吧版本不受支持。请使用受支持的贴吧版本（%s-%s）或尝试更新模块。\n",
         "exception_init_preference" to "初始化设置失败，请尝试更换贴吧版本。",
         "regex_hint" to "请输入正则表达式，如.*",
-        "release_uri" to "https://github.com/GuhDoy/TiebaTS/releases",
-        "ci_uri" to "https://github.com/GuhDoy/TiebaTS/actions",
+        "release_uri" to "https://github.com/AIKA1024/TiebaTS/releases",
+        "ci_uri" to "https://github.com/AIKA1024/TiebaTS/actions",
     )
 }

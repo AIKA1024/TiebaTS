@@ -1,0 +1,7 @@
+# Modern libxposed module declaration (LSPosed 2.1+ / Xposed API 102).
+# Only minApiVersion, targetApiVersion and staticScope are parsed by LSPosed.
+minApiVersion=102
+targetApiVersion=102
+staticScope=true
+# autoHotReload is intentionally omitted: this module keeps per-generation state
+# (Room rules database, SharedPreferences, native libraries) and must not be reloaded in place.

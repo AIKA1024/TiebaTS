@@ -5,8 +5,8 @@ package gm.tieba.tabswitch.util
 import android.app.Activity
 import android.app.Application
 import androidx.annotation.ColorInt
-import de.robv.android.xposed.XposedBridge
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedBridge
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.XposedContext.Companion.findClass
 import java.lang.reflect.InvocationTargetException

@@ -13,7 +13,7 @@ import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.LinearLayout
-import de.robv.android.xposed.XposedHelpers
+import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.Constants.strings
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.hooker.IHooker
@@ -47,7 +47,7 @@ class HistoryCache : XposedContext(), IHooker {
             if (param.args[0] == null) {
                 mRegex = ""
             }
-            NavigationBar(param.thisObject).addTextButton("搜索") { showRegexDialog(activity) }
+            NavigationBar(activity).addTextButton("搜索") { showRegexDialog(activity) }
         }
 
         hookBeforeMethod(

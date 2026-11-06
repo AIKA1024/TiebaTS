@@ -24,7 +24,7 @@ import java.util.Locale;
 import java.util.Random;
 
 import dalvik.system.PathClassLoader;
-import de.robv.android.xposed.XposedBridge;
+import gm.tieba.tabswitch.compat.XposedBridge;
 import gm.tieba.tabswitch.BuildConfig;
 import gm.tieba.tabswitch.XposedContext;
 import gm.tieba.tabswitch.dao.Preferences;
@@ -69,13 +69,17 @@ public class TraceChecker extends XposedContext {
     private void classloader() {
         final ResultBuilder result = new ResultBuilder("类加载器");
         try {
-            final String clazz = "de.robv.android.xposed.XposedBridge";
+            // Use the class literal so R8 rewrites the name together with the class itself.
+            final String clazz = XposedBridge.class.getName();
             PathClassLoader.getSystemClassLoader().loadClass(clazz);
             result.addTrace(JAVA, clazz);
         } catch (final ClassNotFoundException ignored) {
         }
 
-        if (NativeCheck.findXposed()) result.addTrace(C, "de/robv/android/xposed/XposedBridge");
+        // The native probe now looks for the modern libxposed interface class; API 102 modules
+        // no longer load de/robv/android/xposed/XposedBridge at all.
+        if (NativeCheck.findXposed())
+            result.addTrace(C, "io/github/libxposed/api/XposedInterface");
         if (NativeCheck.isFindClassInline()) result.addTrace(FAKE, "FindClass is inline hooked");
         result.show();
     }
