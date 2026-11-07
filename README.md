@@ -66,7 +66,7 @@
 - **`NavigationBar` 支持嵌套查找**：新版部分 Activity 把导航栏放进 holder 对象，不再直接挂在 Activity 字段上。
 - **native 痕迹探针**改为检测 `io/github/libxposed/api/XposedInterface`，不再检测早已不存在的旧 `XposedBridge`。
 
-### 实机验证（2026-11-06）
+### 实机验证（2026-11-06 起）
 
 在 MuMu 虚拟机上完成了一次完整联调：Android 15 / x86_64、KernelSU 3.2.5 + ZygiskNext 1.5.2、
 **LSPosed 2.2.1 (7912) / Xposed API 102**、贴吧 **22.13.1.1**。已确认：
