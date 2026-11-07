@@ -91,6 +91,16 @@
   `TB client detected, version 22.13.1.1` 与 `5 of 23 deobfuscation rule(s) unavailable`，
   无异常堆栈；设置入口、「关于」分组与「适配信息」弹窗（22.13.1.1 及以上 / 23 条中 5 条失效）
   全部正常渲染。
+- **设置页二次进入修复（4.0.0-beta.18，2026-11-07）**：修复「第一次能进设置页，返回后再进不去，
+  多点几次连入口按钮都消失」的回归。根因是 `createButton` 每生成一个按钮就注册一次
+  `MoreActivity.onChangeSkinType` hook，设置页一次要建 30+ 个按钮，第二次进入即撞上 LSPosed
+  「同一 callback class 最多 64 次注册」的限制，抛出
+  `IllegalStateException: Reject hook registration ... already registered 64 times`，
+  导致 `createButton` 失败、代理页不再渲染、入口按钮也注入不了。
+  现改为**每进程只注册一次**换肤 hook，用弱引用绑定列表刷新所有存活按钮；入口按钮加 tag 去重、
+  带 `proxyPage` 的实例不再重复注入，容器查找改为容错遍历且整体包在 try-catch 中。
+  实机连续 5 轮「进入 → 返回 → 再进入」以及快速连点后重新进入，设置页与入口均正常，
+  日志中 `Reject hook registration` 计数为 0。
 
 > 以上仍是**加载链路与设置页**的验证，不代表 31 项功能逐项在新版贴吧上生效（例如净化效果、
 > 过滤规则的实际表现）仍需在日常使用中观察。

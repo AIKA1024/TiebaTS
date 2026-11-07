@@ -42,6 +42,7 @@ import gm.tieba.tabswitch.util.isLightMode
 import gm.tieba.tabswitch.widget.Switch
 import gm.tieba.tabswitch.widget.TbToast
 import gm.tieba.tabswitch.widget.TbToast.Companion.showTbToast
+import java.lang.ref.WeakReference
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.util.Random
@@ -121,24 +122,79 @@ object TSPreferenceHelper : XposedContext() {
                 }
             }
 
-            // Fix TS Preference button not changing background when skin type changed
-            hookAfterMethod(
+        }
+
+        if (newButton != null) {
+            trackForSkinChange(newButton, imageView, svgManager)
+        }
+        return newButton ?: throw IllegalStateException("LinearLayout not found in TbSettingTextTipView")
+    }
+
+    private class SkinBinding(
+        val button: WeakReference<LinearLayout>,
+        val arrow: WeakReference<ImageView>?,
+        val svgManager: Any
+    )
+
+    private val sSkinBindings = ArrayList<SkinBinding>()
+    private var sSkinHookInstalled = false
+
+    /**
+     * Register the skin-change hook ONCE for the whole process.
+     *
+     * The old code registered one `onChangeSkinType` hook per button. A preference page builds
+     * 30+ buttons, so LSPosed's per-callback-class limit (64 registrations) was hit on the
+     * second visit: `createButton` threw `IllegalStateException`, the proxy page was never
+     * rendered and even the entry button stopped being injected. One hook + weak bindings
+     * keeps the day/night refresh for every live button without unbounded registrations.
+     */
+    @Synchronized
+    private fun trackForSkinChange(button: LinearLayout, arrow: ImageView?, svgManager: Any?) {
+        val manager = svgManager ?: return
+        synchronized(sSkinBindings) {
+            sSkinBindings.removeAll { it.button.get() == null }
+            sSkinBindings.add(
+                SkinBinding(WeakReference(button), arrow?.let { WeakReference(it) }, manager)
+            )
+        }
+        if (sSkinHookInstalled) return
+        sSkinHookInstalled = true
+        try {
+            XposedContext.hookAfterMethod(
                 "com.baidu.tieba.setting.more.MoreActivity",
                 "onChangeSkinType", Int::class.javaPrimitiveType
             ) { _ ->
-                setBackgroundColor(getColor("CAM_X0201"))
-                XposedHelpers.callMethod(
-                    svgManager,
-                    "setPureDrawableWithDayNightModeAutoChange",
-                    imageView,
-                    getDrawableId("icon_pure_list_arrow16_right_svg"),
-                    getR("color", "CAM_X0109"),
-                    null
-                )
+                synchronized(sSkinBindings) {
+                    val iterator = sSkinBindings.iterator()
+                    while (iterator.hasNext()) {
+                        val binding = iterator.next()
+                        val target = binding.button.get()
+                        if (target == null) {
+                            iterator.remove()
+                        } else {
+                            try {
+                                target.setBackgroundColor(getColor("CAM_X0201"))
+                                binding.arrow?.get()?.let { imageView ->
+                                    XposedHelpers.callMethod(
+                                        binding.svgManager,
+                                        "setPureDrawableWithDayNightModeAutoChange",
+                                        imageView,
+                                        getDrawableId("icon_pure_list_arrow16_right_svg"),
+                                        getR("color", "CAM_X0109"),
+                                        null
+                                    )
+                                }
+                            } catch (tr: Throwable) {
+                                XposedBridge.log(tr)
+                            }
+                        }
+                    }
+                }
             }
+        } catch (tr: Throwable) {
+            // Losing only the cosmetic refresh must never break button creation.
+            XposedBridge.log(tr)
         }
-
-        return newButton ?: throw IllegalStateException("LinearLayout not found in TbSettingTextTipView")
     }
 
     fun randomToast(): String {

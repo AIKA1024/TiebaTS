@@ -12,7 +12,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
-import android.widget.RelativeLayout
 import android.widget.ScrollView
 import gm.tieba.tabswitch.compat.XposedBridge
 import gm.tieba.tabswitch.BuildConfig
@@ -64,35 +63,68 @@ class TSPreference : XposedContext(), IHooker {
             PROXY_ACTIVITY,
             "onCreate", Bundle::class.java
         ) { param ->
-            val activity = param.thisObject as Activity
-            val contentView = activity.findViewById<ViewGroup>(android.R.id.content)
-            val parent = contentView.getChildAt(0) as RelativeLayout
-            val scroll = parent.getChildAt(0) as ScrollView
-            val containerView = scroll.getChildAt(0) as LinearLayout
-            containerView.addView(createButton(MAIN, null, true) { startRootPreferenceActivity(activity) }, 11)
-
-            val proxyPage = activity.intent.getStringExtra("proxyPage")
-                ?: return@hookAfterMethod
+            val activity = param.thisObject as? Activity ?: return@hookAfterMethod
             try {
-                val preferenceLayout = when (proxyPage) {
-                    MAIN -> createRootPreference(activity)
-                    MODIFY_TAB -> createModifyTabPreference(activity)
-                    TRACE -> createHidePreference(activity)
-                    else -> null
-                } ?: return@hookAfterMethod
-                // MoreActivity has no NavigationBar holder; put "重启" at the top of the list.
-                preferenceLayout.addView(
-                    createButton("重启", null, true) { _ ->
-                        commit()
-                        restart(activity)
-                    }, 0
-                )
-                containerView.removeAllViews()
-                containerView.addView(preferenceLayout)
+                val container = findPreferenceContainer(activity)
+                if (container == null) {
+                    XposedBridge.log("TSPreference: preference container not found in MoreActivity")
+                    return@hookAfterMethod
+                }
+                val proxyPage = activity.intent?.getStringExtra("proxyPage")
+                if (proxyPage == null) {
+                    addEntryButton(container, activity)
+                } else {
+                    showProxyPage(container, activity, proxyPage)
+                }
             } catch (tr: Throwable) {
+                // A failed injection must never break the host Activity's onCreate.
                 XposedBridge.log(tr)
             }
         }
+    }
+
+    private fun findPreferenceContainer(activity: Activity): LinearLayout? {
+        val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return null
+        return findScrollContent(content)
+    }
+
+    private fun findScrollContent(view: View): LinearLayout? {
+        if (view is ScrollView) {
+            val child = view.getChildAt(0)
+            if (child is LinearLayout) return child
+        }
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findScrollContent(view.getChildAt(i))?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun addEntryButton(container: LinearLayout, activity: Activity) {
+        // Every tap starts a new MoreActivity instance; do not stack duplicate rows.
+        if (container.findViewWithTag<View>(ENTRY_TAG) != null) return
+        val button = createButton(MAIN, null, true) { startRootPreferenceActivity(activity) }
+        button.tag = ENTRY_TAG
+        container.addView(button, ENTRY_INDEX.coerceAtMost(container.childCount))
+    }
+
+    private fun showProxyPage(container: LinearLayout, activity: Activity, proxyPage: String) {
+        val preferenceLayout = when (proxyPage) {
+            MAIN -> createRootPreference(activity)
+            MODIFY_TAB -> createModifyTabPreference(activity)
+            TRACE -> createHidePreference(activity)
+            else -> null
+        } ?: return
+        // MoreActivity has no NavigationBar holder; put "重启" at the top of the list.
+        preferenceLayout.addView(
+            createButton("重启", null, true) { _ ->
+                commit()
+                restart(activity)
+            }, 0
+        )
+        container.removeAllViews()
+        container.addView(preferenceLayout)
     }
 
     private fun startRootPreferenceActivity(activity: Activity) {
@@ -378,6 +410,8 @@ class TSPreference : XposedContext(), IHooker {
         // Verified in the 22.13.1.1 dex: SecretSettingActivity is gone. MoreActivity is the
         // only preference host for supported clients, so no runtime class probing is needed.
         private const val PROXY_ACTIVITY = "com.baidu.tieba.setting.more.MoreActivity"
+        private const val ENTRY_TAG = "gm.tieba.tabswitch.ts_pref_entry"
+        private const val ENTRY_INDEX = 11
         private var sCount = 0
     }
 }
