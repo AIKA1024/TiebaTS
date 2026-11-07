@@ -26,8 +26,9 @@ class Ripple : XposedContext(), IHooker {
     }
 
     override fun hook() {
+        // com.baidu.tieba.pb.pb.sub.SubPbLayout was removed before 22.13.1.1; keep only
+        // the holders that actually exist in the supported client.
         val subPbLayoutName = listOf(
-            "com.baidu.tieba.pb.pb.sub.SubPbLayout",
             "com.baidu.tieba.pb.sub.view.SubPbLayout",
             "com.baidu.tieba.pb.databinding.NewSubPbLayoutBinding"
         ).firstOrNull { XposedHelpers.findClassIfExists(it) != null }

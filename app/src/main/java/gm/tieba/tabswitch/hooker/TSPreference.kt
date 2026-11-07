@@ -8,8 +8,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Process
-import android.text.TextUtils
-import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
@@ -17,12 +15,9 @@ import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.ScrollView
 import gm.tieba.tabswitch.compat.XposedBridge
-import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.BuildConfig
 import gm.tieba.tabswitch.Constants.strings
 import gm.tieba.tabswitch.XposedContext
-import gm.tieba.tabswitch.dao.AcRules.findRule
-import gm.tieba.tabswitch.dao.AcRules.isRuleFound
 import gm.tieba.tabswitch.dao.Preferences.commit
 import gm.tieba.tabswitch.dao.Preferences.getBoolean
 import gm.tieba.tabswitch.dao.Preferences.getIsAutoSignEnabled
@@ -36,43 +31,21 @@ import gm.tieba.tabswitch.hooker.TSPreferenceHelper.SwitchButtonHolder
 import gm.tieba.tabswitch.hooker.TSPreferenceHelper.createButton
 import gm.tieba.tabswitch.hooker.TSPreferenceHelper.createTextView
 import gm.tieba.tabswitch.hooker.TSPreferenceHelper.randomToast
-import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper.getTbVersion
-import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper.isTbSatisfyVersionRequirement
-import gm.tieba.tabswitch.hooker.deobfuscation.Matcher
-import gm.tieba.tabswitch.hooker.deobfuscation.SmaliMatcher
 import gm.tieba.tabswitch.hooker.extra.TraceChecker
 import gm.tieba.tabswitch.util.fixAlertDialogWidth
 import gm.tieba.tabswitch.util.getDialogTheme
 import gm.tieba.tabswitch.util.restart
-import gm.tieba.tabswitch.widget.NavigationBar
 import gm.tieba.tabswitch.widget.TbToast
 import gm.tieba.tabswitch.widget.TbToast.Companion.showTbToast
-import org.luckypray.dexkit.query.matchers.ClassMatcher
 import java.util.Locale
 
-class TSPreference : XposedContext(), IHooker, Obfuscated {
+class TSPreference : XposedContext(), IHooker {
 
     override fun key(): String {
         return "ts_pref"
     }
 
-    override fun matchers(): List<Matcher> {
-        return listOf(
-            SmaliMatcher(
-                "Lcom/baidu/tbadk/data/MetaData;->getBazhuGradeData()Lcom/baidu/tbadk/coreExtra/data/BazhuGradeData;"
-            ).apply {
-                classMatcher = ClassMatcher.create().usingStrings("mo/q/wise-bawu-core/privacy-policy")
-            }
-        )
-    }
-
     override fun hook() {
-        // On Tieba 22.13.1.1 the SmaliMatcher below no longer resolves. Without this flag the
-        // constructor-based proxy page hook is never registered, and tapping "贴吧TS设置" just
-        // opens an empty native MoreActivity. Remember whether the rule resolved so onCreate can
-        // render the preference page itself when it did not.
-        val proxyRuleAvailable = isRuleFound(*matchers().map { it.toString() }.toTypedArray())
-
         hookBeforeMethod(
             Dialog::class.java,
             "dismissDialog"
@@ -84,8 +57,11 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
             }
         }
 
+        // Only 22.13.1.1+ is supported. The legacy proxy Activity (SecretSettingActivity)
+        // and its constructor-based DexKit rule are gone; MoreActivity renders the
+        // preference page directly when launched with a proxyPage extra.
         hookAfterMethod(
-            "com.baidu.tieba.setting.more.MoreActivity",
+            PROXY_ACTIVITY,
             "onCreate", Bundle::class.java
         ) { param ->
             val activity = param.thisObject as Activity
@@ -95,94 +71,27 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
             val containerView = scroll.getChildAt(0) as LinearLayout
             containerView.addView(createButton(MAIN, null, true) { startRootPreferenceActivity(activity) }, 11)
 
-            if (!proxyRuleAvailable) {
-                val proxyPage = activity.intent.getStringExtra("proxyPage")
-                    ?: return@hookAfterMethod
-                try {
-                    val preferenceLayout = when (proxyPage) {
-                        MAIN -> createRootPreference(activity)
-                        MODIFY_TAB -> createModifyTabPreference(activity)
-                        TRACE -> createHidePreference(activity)
-                        else -> null
-                    } ?: return@hookAfterMethod
-                    // The classic proxy page placed "重启" in the NavigationBar. MoreActivity has
-                    // no matching holder, so put it at the top of the preference list instead.
-                    preferenceLayout.addView(
-                        createButton("重启", null, true) { _ ->
-                            commit()
-                            restart(activity)
-                        }, 0
-                    )
-                    containerView.removeAllViews()
-                    containerView.addView(preferenceLayout)
-                } catch (tr: Throwable) {
-                    XposedBridge.log(tr)
-                }
-            }
-        }
-
-        findRule(matchers()) { _, clazz, _ ->
+            val proxyPage = activity.intent.getStringExtra("proxyPage")
+                ?: return@hookAfterMethod
             try {
-                hookAfterConstructor(clazz, findClass(PROXY_ACTIVITY)) { param ->
-                    val activity = param.args[0] as Activity
-                    try {
-                        val navigationBar = NavigationBar(param.thisObject)
-                        val proxyPage = activity.intent.getStringExtra("proxyPage") ?: return@hookAfterConstructor
-                        when (proxyPage) {
-                            MAIN -> proxyPage(activity, navigationBar, MAIN, createRootPreference(activity))
-                            MODIFY_TAB -> proxyPage(activity, navigationBar, MODIFY_TAB, createModifyTabPreference(activity))
-                            TRACE -> proxyPage(activity, navigationBar, TRACE, createHidePreference(activity))
-                        }
-
-                    } catch (tr: Throwable) {
-                        val messages = ArrayList<String?>().apply {
-                            add(strings["exception_init_preference"])
-                            add(
-                                "贴吧版本：%s, 模块版本：%d".format(Locale.CHINA, getTbVersion(getContext()), BuildConfig.VERSION_CODE)
-                            )
-                            add(Log.getStackTraceString(tr))
-                        }
-
-                        val message = TextUtils.join("\n", messages)
-                        XposedBridge.log(message)
-
-                        val alert = AlertDialog.Builder(
-                            activity,
-                            getDialogTheme(getContext())
-                        )
-                            .setTitle("规则异常")
-                            .setMessage(message)
-                            .setCancelable(false)
-                            .setPositiveButton(activity.getString(android.R.string.ok)) { _, _ -> activity.finish() }
-                            .create()
-
-                        alert.show()
-                        fixAlertDialogWidth(alert)
-                    }
-                }
-            } catch (ignored: NoSuchMethodError) {
+                val preferenceLayout = when (proxyPage) {
+                    MAIN -> createRootPreference(activity)
+                    MODIFY_TAB -> createModifyTabPreference(activity)
+                    TRACE -> createHidePreference(activity)
+                    else -> null
+                } ?: return@hookAfterMethod
+                // MoreActivity has no NavigationBar holder; put "重启" at the top of the list.
+                preferenceLayout.addView(
+                    createButton("重启", null, true) { _ ->
+                        commit()
+                        restart(activity)
+                    }, 0
+                )
+                containerView.removeAllViews()
+                containerView.addView(preferenceLayout)
+            } catch (tr: Throwable) {
+                XposedBridge.log(tr)
             }
-        }
-    }
-
-    private fun proxyPage(activity: Activity, navigationBar: NavigationBar, title: String, preferenceLayout: LinearLayout) {
-        navigationBar.apply {
-            setTitleText(title)
-            setCenterTextTitle("")
-            addTextButton("重启") { _ ->
-                commit()
-                restart(activity)
-            }
-        }
-
-        val contentView = activity.findViewById<ViewGroup>(android.R.id.content)
-        val parent = contentView.getChildAt(0) as LinearLayout
-        val mainScroll = parent.getChildAt(1) as ScrollView
-        val containerView = mainScroll.getChildAt(0) as LinearLayout
-
-        containerView.apply {
-            removeAllViews()
-            addView(preferenceLayout)
         }
     }
 
@@ -394,12 +303,12 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
                 框架：LSPosed 2.1.0+ 或其它实现 libxposed API 102 的框架。
                 KernelSU 3.x 需另装 ZygiskNext；LSPosed 1.x、EdXposed、原版 Xposed 不兼容。
 
-                目标客户端：百度贴吧 %s（最低 %s）。
+                目标客户端：百度贴吧 %s 及以上版本，更早版本不受支持。
                 作用域：com.baidu.tieba。
 
-                当前版本有 6 条 DexKit 规则在 22.13.1.1 上失效，模块会降级运行；
+                23 条 DexKit 规则中有 5 条在 22.13.1.1 上失效，模块会降级运行；
                 部分功能效果仍需实机逐项验证，详见仓库 README。
-                """.trimIndent().format(Locale.CHINA, BuildConfig.TARGET_VERSION, BuildConfig.MIN_VERSION),
+                """.trimIndent().format(Locale.CHINA, BuildConfig.TARGET_VERSION),
                 strings["fork_uri"]
             )
         })
@@ -426,10 +335,10 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
         preferenceLayout.addView(createTextView("其他"))
         val transitionAnimation = SwitchButtonHolder(activity, "修复过渡动画", "transition_animation", SwitchButtonHolder.TYPE_SWITCH)
 
-        val shouldEnableTransitionAnimationFix = Build.VERSION.SDK_INT >= 34 && isTbSatisfyVersionRequirement("12.58.2.1")
+        val shouldEnableTransitionAnimationFix = Build.VERSION.SDK_INT >= 34
         transitionAnimation.setOnButtonClickListener { _ ->
             if (!shouldEnableTransitionAnimationFix) {
-                showTbToast("当前贴吧版本不支持此功能", TbToast.LENGTH_SHORT)
+                showTbToast("当前 Android 版本不支持此功能", TbToast.LENGTH_SHORT)
             } else {
                 transitionAnimation.bdSwitch.changeState()
             }
@@ -466,16 +375,9 @@ class TSPreference : XposedContext(), IHooker, Obfuscated {
         const val MAIN: String = "贴吧TS设置"
         const val MODIFY_TAB: String = "修改页面"
         const val TRACE: String = "痕迹"
-        private val PROXY_ACTIVITY: String by lazy {
-            // Verified against Tieba 22.13.1.1: SecretSettingActivity was removed, while both
-            // MoreActivity and PersonCenterMoreActivity still exist in the dex.
-            listOf(
-                "com.baidu.tieba.setting.im.more.SecretSettingActivity",
-                "com.baidu.tieba.setting.more.MoreActivity",
-                "com.baidu.tieba.person.more.PersonCenterMoreActivity"
-            ).firstOrNull { XposedHelpers.findClassIfExists(it) != null }
-                ?: "com.baidu.tieba.setting.more.MoreActivity"
-        }
+        // Verified in the 22.13.1.1 dex: SecretSettingActivity is gone. MoreActivity is the
+        // only preference host for supported clients, so no runtime class probing is needed.
+        private const val PROXY_ACTIVITY = "com.baidu.tieba.setting.more.MoreActivity"
         private var sCount = 0
     }
 }

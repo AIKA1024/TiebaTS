@@ -18,12 +18,14 @@
 | Hook 模型 | `XC_MethodHook` before/after | 拦截器链 `hook(Executable).intercept(...)`，由兼容垫片还原旧语义 |
 | 反射工具 | 框架提供的 `XposedHelpers` | 模块内自带实现（API 102 禁止访问旧包） |
 | 模块资源 | `XModuleResources` 隐藏 API | 直接从模块 APK 读取 assets |
-| 目标客户端 | 12.53.1.0 – 12.66.1.0 | **22.13.1.1**（APK 构建于 2026-10-27），下限 22.0.0.0 |
+| 版本兼容 | 按规则的 `requiredVersion` 门槛 + 多处 12.x 分支 | 单一下限 22.13.1.1，无按规则版本过滤 |
+| 目标客户端 | 12.53.1.0 – 12.66.1.0 | **22.13.1.1 起**（校验基准 22.13.1.1，APK 构建于 2026-10-27），不支持更早版本 |
 
 框架适配集中在 `XposedContext.kt` 和 `compat/` 目录，`hooker/` 下 31 个功能模块基本保持原样。
 
 ## 支持范围与要求
 
+- **贴吧客户端**：仅 **22.13.1.1 及以上**。旧版 22.0.x / 12.x 不再支持，源码里的 12.x 版本门槛、老类名候选与按规则的版本过滤均已移除。
 - **框架**：LSPosed 2.1+ 或任何实现 libxposed API 102 的框架。
 - **不兼容**：LSPosed 1.x、EdXposed、原版 Xposed。声明 `targetApiVersion=102` 的模块在 classloader 层面被禁止访问旧 `de.robv.android.xposed` 类，因此无法双兼容。
 - **作用域**：`com.baidu.tieba`（`staticScope=true`，不能添加其它应用）。
@@ -41,14 +43,16 @@
 | 资源名 | 13 | 13 | 0 |
 | DexKit smali 规则 | 7 | 7 | 0 |
 
-3 个已移除的类已做处理：
+### 22.13.1.1 上已消失的旧符号
 
-- `tbclient.ForumRecommend.DataRes$Builder` → 运行时在 `ForumRecommend.*$Builder` 中查找仍带 `like_forum` 字段的那个。
-- `com.baidu.tieba.enterForum.recforum.message.RecommendForumRespondedMessage` → 类不存在时跳过，不再让整个净化功能失败。
-- `com.baidu.tieba.pb.pb.sub.SubPbLayout` → 多候选探测 + 按 `createView`/`b` 方法定位 holder，找不到时优雅降级。
+- `tbclient.ForumRecommend.DataRes$Builder` → 旧类名候选已删除；只在当前版本仍存在的
+  `NewRecommend` / `LikeForum` Builder 中按 `like_forum` 字段定位。
+- `com.baidu.tieba.enterForum.recforum.message.RecommendForumRespondedMessage` → 在 dex 类表中完全不存在，相关探测代码已删除。
+- `com.baidu.tieba.pb.pb.sub.SubPbLayout` → 旧类名候选已删除；保留 `pb.sub.view.SubPbLayout` 与
+  `NewSubPbLayoutBinding`，按 `createView`/`b` 定位 holder，找不到时优雅降级。
 
-设置页代理 Activity 也改为运行时探测：22.13.1.1 中 `SecretSettingActivity` 已被删除，而
-`setting.more.MoreActivity` 与 `person.more.PersonCenterMoreActivity` 仍存在（已用 APK 的 dex 类表逐个核对）。
+设置页代理 Activity 固定为 `setting.more.MoreActivity`（`SecretSettingActivity` 已删除，已用 dex 类表核对）；
+对应的构造函数式 DexKit 规则与老代理页 hook 一并移除，只保留 `MoreActivity.onCreate` 一条渲染路径。
 
 ### 22.x 运行时适配
 
@@ -74,27 +78,50 @@
 - 24 条规则中有 **6 条在 22.13.1.1 上失效**（`MetaData->getBazhuGradeData`、`AlaLiveTipView.<init>`、
   `dimen.tbds400`、`purge_enter_on_success`、`PersonOftenFuncItemView.<init>`、
   `AdAppStateManager.instance`），模块按设计降级继续运行而不是整体停摆。
+  *清理老版本兼容后规则数变为 23 条、失效 5 条（见下节）。*
 - **设置入口注入成功**：贴吧「设置」页出现「贴吧TS设置」；接受使用协议后可打开完整设置页，
-  开关显示与点击写入均正常（`TS_preferences.xml` 正确落盘）。由于上述第一条规则失效，
-  构造函数式的代理页 hook 无法注册，现已增加 `MoreActivity.onCreate` 的兜底渲染路径。
+  开关显示与点击写入均正常（`TS_preferences.xml` 正确落盘）。设置页现由
+  `MoreActivity.onCreate` 单一路径渲染。
 - 通过直接写入偏好验证 hook 注册链路：`Enabled hooks` 从默认的 `ts_pref, fragment_tab`
   正确扩展到包含 `purge_enter / purge_my / purge_video / auto_refresh` 等条目。
 - **设置页署名（4.0.0-beta.16）**：安装签名包后，「关于」分组新增的本分支条目、
   「本分支」与「适配信息」弹窗、外链跳转均在 22.13.1.1 上实机渲染正常，无截断与异常堆栈。
+- **移除老版本兼容后（4.0.0-beta.17，2026-11-07）**：实机日志显示
+  `Loading TiebaTS, version 4000017`、`Framework LSPosed 2.2.1 (7912), Xposed API 102`、
+  `TB client detected, version 22.13.1.1` 与 `5 of 23 deobfuscation rule(s) unavailable`，
+  无异常堆栈；设置入口、「关于」分组与「适配信息」弹窗（22.13.1.1 及以上 / 23 条中 5 条失效）
+  全部正常渲染。
 
 > 以上仍是**加载链路与设置页**的验证，不代表 31 项功能逐项在新版贴吧上生效（例如净化效果、
 > 过滤规则的实际表现）仍需在日常使用中观察。
+
+## 已移除的老版本兼容（2026-11-07）
+
+本分支只支持贴吧 **22.13.1.1 及以上**，已移除上游遗留的旧版本代码：
+
+- `Matcher.requiredVersion` 与 `XposedInit` 中按规则的版本过滤（该字段本就没有任何规则赋值，属死代码）。
+- `DeobfuscationHelper.isTbSatisfyVersionRequirement` / `isTbBetweenVersionRequirement`，
+  连同 `12.55 / 12.56 / 12.57 / 12.58.2.1 / 12.59` 等门槛，统一改为单一下限判断 `isSupportedTbVersion()`。
+- `Purge` 里按 12.59 分叉的 `index_tab_info` 处理、设置页与 `TransitionAnimation` 的 12.58.2.1
+  贴吧版本判断（Android 14 的 `SDK_INT` 判断保留）。
+- 已确认在 22.13.1.1 不存在的旧类名：`SecretSettingActivity`、`RecommendForumRespondedMessage`、
+  `ForumRecommend.DataRes$Builder`、`pb.pb.sub.SubPbLayout`，以及老代理 Activity 的构造函数式 hook。
+- `MIN_VERSION` 从 `22.0.0.0` 收紧到 `22.13.1.1`；规则数从 24 降到 23（失效 6 → 5）。
+
+**保留**的是 22.13.1.1 实测需要的容错：反混淆规则缺失降级、方法/字段签名候选
+（`Switch`、`AutoRefresh`、`HistoryCache`、`RedTip`、`FrsTab` 的 ViewPager 类型）、闪屏 hook 的可选包装。
+`12_57_frs_pre_request` 一类字符串是 AB 测试的 sid 值而非版本号，保留原样。
 
 ## 已知限制
 
 - **楼层点按效果（Ripple）**：新版贴吧重构了楼中楼布局，即使探测到候选类也可能无法生效，需实机调整。
 - **关注吧缓存**：依赖 protobuf 字段名 `like_forum`；22.13.1.1 上未找到对应 Builder，日志会提示跳过该功能。
-- **6 条 DexKit 规则失效**（见上）：影响对应反混淆定位的功能，模块会降级运行。
+- **5 条 DexKit 规则失效**（见上）：影响对应反混淆定位的功能，模块会降级运行。
 - **native 库编译 arm64-v8a 与 x86_64**；32 位设备只有 DexKit 的预编译库，`libhide` / `libcheck` 不可用。
 - 需 **LSPosed 2.1.0+**（API 102）。2.0.3 及更早版本提供的是 API 101，会因 `minApiVersion=102` 拒绝加载；
   KernelSU 3.x 还需单独安装 ZygiskNext，否则框架不会注入 zygote。
 - 模块不再包含旧框架入口，降级安装旧版 LSPosed 会导致模块无法加载。
-- 24 条 DexKit 规则与部分硬编码类名仍需在每个新版贴吧上重新校验；本仓库的校验基准是 22.13.1.1。
+- 23 条 DexKit 规则与部分硬编码类名仍需在每个新版贴吧上重新校验；本仓库的校验基准是 22.13.1.1。
 
 ## 功能
 

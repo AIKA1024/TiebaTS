@@ -42,15 +42,6 @@ class PurgeEnter : XposedContext(), IHooker, Obfuscated {
     }
 
     override fun hook() {
-        // Removed in Tieba 22.x. Skip silently instead of failing the whole hooker.
-        val respondedMessage = XposedHelpers.findClassIfExists(
-            "com.baidu.tieba.enterForum.recforum.message.RecommendForumRespondedMessage"
-        )
-        val getData = respondedMessage?.let {
-            XposedHelpers.findMethodExactIfExists(it, "getRecommendForumData")
-        }
-        getData?.let { hookReplaceMethod(it) { null } }
-
         mPbListViewInnerViewConstructorName = findClass("com.baidu.tbadk.core.view.PbListView").superclass.declaredMethods.find { method ->
             method.returnType.toString().endsWith("View") && !Modifier.isAbstract(method.modifiers)
         }?.name
@@ -92,7 +83,7 @@ class PurgeEnter : XposedContext(), IHooker, Obfuscated {
             }
         }
 
-        try {   // 12.56.4.0+ 禁用WebView进吧页
+        try {   // 禁用 WebView 进吧页
             hookReplaceMethod(
                 findFirstMethodByExactReturnType(
                     "com.baidu.tieba.enterForum.helper.HybridEnterForumHelper",

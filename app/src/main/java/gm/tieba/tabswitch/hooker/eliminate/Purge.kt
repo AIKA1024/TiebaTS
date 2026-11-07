@@ -16,7 +16,6 @@ import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.dao.AcRules.findRule
 import gm.tieba.tabswitch.hooker.IHooker
 import gm.tieba.tabswitch.hooker.Obfuscated
-import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper
 import gm.tieba.tabswitch.hooker.deobfuscation.Matcher
 import gm.tieba.tabswitch.hooker.deobfuscation.SmaliMatcher
 import gm.tieba.tabswitch.hooker.deobfuscation.StringMatcher
@@ -101,19 +100,12 @@ class Purge : XposedContext(), IHooker, Obfuscated {
                                 val removeTabType = listOf("202", "6")
                                 val indexTabInfo = getJSONArray("index_tab_info")
                                 val newIndexTabInfo = JSONArray()
-                                if (DeobfuscationHelper.isTbSatisfyVersionRequirement("12.59")) {
-                                    for (i in 0 until indexTabInfo.length()) {
-                                        val currTab = indexTabInfo.getJSONObject(i)
-                                        if (currTab.getString("is_main_tab") == "1" && currTab.getString("tab_type") !in removeTabType) {
-                                            newIndexTabInfo.put(currTab)
-                                        }
-                                    }
-                                } else {
-                                    for (i in 0 until indexTabInfo.length()) {
-                                        val currTab = indexTabInfo.getJSONObject(i)
-                                        if (currTab.getString("tab_type") !in removeTabType) {
-                                            newIndexTabInfo.put(currTab)
-                                        }
+                                // 22.13.1.1 always carries is_main_tab; clients without that
+                                // field (legacy clients) are no longer supported.
+                                for (i in 0 until indexTabInfo.length()) {
+                                    val currTab = indexTabInfo.getJSONObject(i)
+                                    if (currTab.getString("is_main_tab") == "1" && currTab.getString("tab_type") !in removeTabType) {
+                                        newIndexTabInfo.put(currTab)
                                     }
                                 }
                                 put("index_tab_info", newIndexTabInfo)
@@ -363,9 +355,8 @@ class Purge : XposedContext(), IHooker, Obfuscated {
             chatGroupInfo?.put("aichat_entrance_info", null)
         }
 
-        // 12.55+
+        // 帖子内广告（类在部分构建中缺失，跳过即可）
         try {
-            // 帖子内广告
             hookReplaceMethod(
                 "com.fun.ad.sdk.internal.api.BaseNativeAd2",
                 "getNativeInfo"
@@ -394,6 +385,7 @@ class Purge : XposedContext(), IHooker, Obfuscated {
             "parseJSONArray",
             JSONArray::class.java
         ) { param ->
+            // These are AB-test sid values, not Tieba version numbers - keep them verbatim.
             val exemptSidList = listOf("12_57_frs_pre_request", "12_53_frs_loading_opt")
             val sidArray = JSONArray()
             exemptSidList.forEach { sidArray.put(JSONObject().put("sid", it)) }

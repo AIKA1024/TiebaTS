@@ -48,8 +48,7 @@ import gm.tieba.tabswitch.hooker.auto.OriginSrc
 import gm.tieba.tabswitch.hooker.auto.TransitionAnimation
 import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper
 import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper.getTbVersion
-import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper.isTbBetweenVersionRequirement
-import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper.isTbSatisfyVersionRequirement
+import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper.isSupportedTbVersion
 import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper.isVersionChanged
 import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper.saveAndRestart
 import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHooker
@@ -202,26 +201,9 @@ class XposedInit : XposedModule() {
                 }
             }
 
-            val matchersList = matchers.flatMap { it.matchers() }.toMutableList()
+            val matchersList = matchers.flatMap { it.matchers() }
 
-            // Remove matchers that do not satisfy the version requirement.
-            matchersList.removeIf { matcher ->
-                matcher.requiredVersion?.let { requiredVersion ->
-                    val isVersionSatisfied = isTbSatisfyVersionRequirement(requiredVersion)
-                    if (!isVersionSatisfied) {
-                        XposedBridge.log(
-                            "Skipping rule [%s] due to version mismatch (current version: %s)".format(
-                                Locale.CHINA,
-                                matcher.toString(),
-                                DeobfuscationHelper.sCurrentTbVersion
-                            )
-                        )
-                        true
-                    } else {
-                        false
-                    }
-                } ?: false
-            }
+            // All rules target 22.13.1.1+; upstream's per-rule version gates are gone.
 
             if (isVersionChanged(getContext())) {
                 if ("com.baidu.tieba" == sProcessName) {
@@ -265,10 +247,10 @@ class XposedInit : XposedModule() {
                     val activity = hookParam.thisObject as Activity
                     val messages = ArrayList<String?>().apply {
                         add(
-                            if (isTbBetweenVersionRequirement(BuildConfig.MIN_VERSION, BuildConfig.TARGET_VERSION)) {
+                            if (isSupportedTbVersion(BuildConfig.MIN_VERSION)) {
                                 strings["exception_rules_incomplete"]
                             } else {
-                                strings["version_mismatch"]?.format(Locale.CHINA, BuildConfig.MIN_VERSION, BuildConfig.TARGET_VERSION)
+                                strings["version_mismatch"]
                             }
                         )
                         add("贴吧版本：%s, 模块版本：%d".format(Locale.CHINA, DeobfuscationHelper.sCurrentTbVersion, BuildConfig.VERSION_CODE))
@@ -320,7 +302,7 @@ class XposedInit : XposedModule() {
                 }
             }
 
-            val shouldEnableTransitionAnimationFix = Build.VERSION.SDK_INT >= 34 && isTbSatisfyVersionRequirement("12.58.2.1")
+            val shouldEnableTransitionAnimationFix = Build.VERSION.SDK_INT >= 34
             if (!shouldEnableTransitionAnimationFix && getBoolean("transition_animation")) {
                 putBoolean("transition_animation", false)
             }

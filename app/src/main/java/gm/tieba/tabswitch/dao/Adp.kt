@@ -28,10 +28,10 @@ object Adp : XposedContext() {
     }
 
     private fun refreshCache() {
-        // Tieba 22.x renamed the protobuf holder. Locate whichever Builder still owns
-        // `like_forum` instead of assuming one version's class name / build() signature.
+        // Only 22.13.1.1+ is supported: DataRes$Builder (the pre-22.x holder) is gone.
+        // Locate whichever current Builder still owns `like_forum` instead of assuming
+        // a fixed class name / build() signature.
         val builder = listOf(
-            "tbclient.ForumRecommend.DataRes\$Builder",
             "tbclient.ForumRecommend.NewRecommend\$Builder",
             "tbclient.ForumRecommend.LikeForum\$Builder"
         ).firstNotNullOfOrNull { name ->

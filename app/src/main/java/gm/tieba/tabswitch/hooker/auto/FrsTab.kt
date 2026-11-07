@@ -54,21 +54,24 @@ class FrsTab : XposedContext(), IHooker, Obfuscated {
                             null,
                             findClass(clazz)
                         )
-                    } catch (e: NoSuchMethodError) { // 12.57+
+                    } catch (e: NoSuchMethodError) {
+                        // Signature not present in this build; skip the hook instead of failing.
                         return@findRule
                     }
 
                     hookAfterMethod(targetMethod) { param ->
-                        val viewPager: Any? = try {
-                            XposedHelpers.findFirstFieldByExactType(
-                                param.args[1].javaClass,
-                                findClass("com.baidu.tbadk.widget.CustomViewPager")
-                            )[param.args[1]]
-                        } catch (e: NoSuchFieldError) {  // 12.56+
-                            XposedHelpers.findFirstFieldByExactType(
-                                param.args[1].javaClass,
-                                findClass("androidx.viewpager.widget.ViewPager")
-                            )[param.args[1]]
+                        // The holder stores its ViewPager under one of these two types across
+                        // builds; probe both rather than assuming a single field type.
+                        val viewPager: Any? = listOf(
+                            "com.baidu.tbadk.widget.CustomViewPager",
+                            "androidx.viewpager.widget.ViewPager"
+                        ).firstNotNullOfOrNull { typeName ->
+                            runCatching {
+                                XposedHelpers.findFirstFieldByExactType(
+                                    param.args[1].javaClass,
+                                    findClass(typeName)
+                                )[param.args[1]]
+                            }.getOrNull()
                         }
                         XposedHelpers.callMethod(viewPager, "setCurrentItem", mPosition)
                     }

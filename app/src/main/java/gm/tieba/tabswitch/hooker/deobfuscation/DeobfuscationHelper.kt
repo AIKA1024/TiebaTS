@@ -100,29 +100,18 @@ object DeobfuscationHelper {
         } ?: restart(activity)
     }
 
-    // Adapted from https://stackoverflow.com/questions/198431/how-do-you-compare-two-version-strings-in-java
-    fun isTbSatisfyVersionRequirement(requiredVersion: String): Boolean {
-        val currParts = sCurrentTbVersion.split(".")
-        val reqParts = requiredVersion.split(".")
+    // Only the minimum supported client matters now. Upstream used per-rule version gates
+    // for many legacy 12.x rules and an inclusive upper bound; this fork
+    // targets 22.13.1.1 and newer, so a single lower-bound check replaces all of them.
+    fun isSupportedTbVersion(minVersion: String): Boolean {
+        val currParts = sCurrentTbVersion.split(".").map { it.toIntOrNull() ?: return false }
+        val minParts = minVersion.split(".").map { it.toIntOrNull() ?: return false }
 
-        val length = max(currParts.size, reqParts.size)
-        for (i in 0 until length) {
-            try {
-                val currPart = currParts.getOrNull(i)?.toInt() ?: 0
-                val reqPart = reqParts.getOrNull(i)?.toInt() ?: 0
-                if (currPart != reqPart) {
-                    return currPart > reqPart
-                }
-            } catch (e: NumberFormatException) {
-                return false
-            }
+        for (i in 0 until max(currParts.size, minParts.size)) {
+            val currPart = currParts.getOrNull(i) ?: 0
+            val minPart = minParts.getOrNull(i) ?: 0
+            if (currPart != minPart) return currPart > minPart
         }
         return true
-    }
-
-    // Inclusive of both ends
-    fun isTbBetweenVersionRequirement(lower: String, upper: String): Boolean {
-        return (isTbSatisfyVersionRequirement(lower)
-                && (!isTbSatisfyVersionRequirement(upper) || sCurrentTbVersion == upper))
     }
 }

@@ -5,7 +5,6 @@ import android.os.Build
 import gm.tieba.tabswitch.compat.XposedHelpers
 import gm.tieba.tabswitch.XposedContext
 import gm.tieba.tabswitch.hooker.IHooker
-import gm.tieba.tabswitch.hooker.deobfuscation.DeobfuscationHelper.isTbSatisfyVersionRequirement
 
 @Suppress("DEPRECATION")
 class TransitionAnimation : XposedContext(), IHooker {
@@ -33,7 +32,9 @@ class TransitionAnimation : XposedContext(), IHooker {
     }
 
     override fun hook() {
-        if (!(Build.VERSION.SDK_INT >= 34 && isTbSatisfyVersionRequirement("12.58.2.1"))) {
+        // The fix relies on Android 14+ transition APIs. Tieba version gating was removed:
+        // only 22.13.1.1 and newer are supported.
+        if (Build.VERSION.SDK_INT < 34) {
             return
         }
 

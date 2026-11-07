@@ -75,7 +75,7 @@ class PurgeMy : XposedContext(), IHooker, Obfuscated {
             }
         }
 
-        // 12.56+
+        // 我的页面会员卡片：类名在 22.13.1.1 中存在，缺失时静默跳过。
         val personCenterMemberCardViewClass = XposedHelpers.findClassIfExists(
             "com.baidu.tieba.personCenter.view.PersonCenterMemberCardView",
             sClassLoader
