@@ -106,6 +106,12 @@
   `com.baidu.tbadk.widget.RightFloatLayerView` 从 `V.E ... 0,0-264,343`（可见）变为
   `G.E ... 0,0-0,0`（GONE），「广告」文本节点从 UI 层级消失，截图无红包；开关可正常
   切换并落盘，两轮设置页往返无回归。
+- **删除彩蛋与冗余的悬浮广告 hook（待发布，2026-11-10）**：`Purge.kt` 中把
+  `RightFloatLayerView` 的所有无参 boolean 方法强制返回 `false` 的旧 hook 与 `PurgeFloatAd`
+  功能重复且写法粗暴，已删除，红包浮层统一由默认启用的 `PurgeFloatAd` 负责。同时移除
+  「连点原作者 10 次」彩蛋（`ze` 配置、俏皮分组标题、随机 Toast 与解锁逻辑）：
+  「真正的净化界面」开关、「隐藏模块」/「隐藏模块（原生）」开关改为设置页常驻显示，
+  分组标题与按钮文案统一恢复常规；「原作者」按钮改为打开上游仓库。
 
 > 以上仍是**加载链路与设置页**的验证，不代表 31 项功能逐项在新版贴吧上生效（例如净化效果、
 > 过滤规则的实际表现）仍需在日常使用中观察。
@@ -138,7 +144,8 @@
   `PbNewInputContainerV2.l0 -> RelativeLayout.getParent()` 空指针，元凶是 `Purge` 里两条
   12.x 编辑器规则（`SpriteMemePan.<init>` 返回 null、「准备展示精灵动画提示控件」返回 false），
   已移除。实机在 `purge=true` 下两次进入 PbActivity 均无崩溃、无异常堆栈；悬浮广告净化不依赖它。
-  该开关仍默认关闭、需连点「作者」10 次才会显示，净化功能本身尚未逐项验证效果。
+  彩蛋已删除，该开关现在常驻显示在设置页「净化界面」分组，默认仍为关闭，
+  净化功能本身尚未逐项验证效果。
 - **native 库编译 arm64-v8a 与 x86_64**；32 位设备只有 DexKit 的预编译库，`libhide` / `libcheck` 不可用。
 - 需 **LSPosed 2.1.0+**（API 102）。2.0.3 及更早版本提供的是 API 101，会因 `minApiVersion=102` 拒绝加载；
   KernelSU 3.x 还需单独安装 ZygiskNext，否则框架不会注入 zygote。

@@ -59,13 +59,6 @@ object Preferences {
     fun getIsAutoSignEnabled(): Boolean = sTsConfig.getBoolean("auto_sign", false)
 
     @SuppressLint("ApplySharedPref")
-    fun putPurgeEnabled() {
-        sTsConfig.edit().putBoolean("ze", true).commit()
-    }
-
-    fun getIsPurgeEnabled(): Boolean = sTsConfig.getBoolean("ze", false)
-
-    @SuppressLint("ApplySharedPref")
     fun putSignature(i: Int) {
         sTsConfig.edit().putInt("signature", i).commit()
     }

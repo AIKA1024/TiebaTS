@@ -21,15 +21,12 @@ import gm.tieba.tabswitch.dao.Preferences.commit
 import gm.tieba.tabswitch.dao.Preferences.getBoolean
 import gm.tieba.tabswitch.dao.Preferences.getIsAutoSignEnabled
 import gm.tieba.tabswitch.dao.Preferences.getIsEULAAccepted
-import gm.tieba.tabswitch.dao.Preferences.getIsPurgeEnabled
 import gm.tieba.tabswitch.dao.Preferences.putAutoSignEnabled
 import gm.tieba.tabswitch.dao.Preferences.putEULAAccepted
-import gm.tieba.tabswitch.dao.Preferences.putPurgeEnabled
 import gm.tieba.tabswitch.hooker.TSPreferenceHelper.PreferenceLayout
 import gm.tieba.tabswitch.hooker.TSPreferenceHelper.SwitchButtonHolder
 import gm.tieba.tabswitch.hooker.TSPreferenceHelper.createButton
 import gm.tieba.tabswitch.hooker.TSPreferenceHelper.createTextView
-import gm.tieba.tabswitch.hooker.TSPreferenceHelper.randomToast
 import gm.tieba.tabswitch.hooker.eliminate.PurgeFloatAd
 import gm.tieba.tabswitch.hooker.extra.TraceChecker
 import gm.tieba.tabswitch.util.fixAlertDialogWidth
@@ -185,10 +182,9 @@ class TSPreference : XposedContext(), IHooker {
     }
 
     private fun createRootPreference(activity: Activity): LinearLayout {
-        val isPurgeEnabled = getIsPurgeEnabled()
         val preferenceLayout = PreferenceLayout(activity)
 
-        preferenceLayout.addView(createTextView(if (isPurgeEnabled) "轻车简从" else "净化界面"))
+        preferenceLayout.addView(createTextView("净化界面"))
         preferenceLayout.addView(createButton(MODIFY_TAB, null, true) { _ ->
             activity.startActivity(Intent().apply {
                 setClassName(activity, PROXY_ACTIVITY)
@@ -196,10 +192,8 @@ class TSPreference : XposedContext(), IHooker {
             })
         })
 
-        if (isPurgeEnabled) {
-            preferenceLayout.addView(SwitchButtonHolder(activity, "真正的净化界面", "purge", SwitchButtonHolder.TYPE_SWITCH))
-        }
-
+        // Easter egg removed: the full Purge hooker switch is always visible.
+        preferenceLayout.addView(SwitchButtonHolder(activity, "真正的净化界面", "purge", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "隐藏右侧悬浮广告", PurgeFloatAd.KEY, SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "净化进吧", "purge_enter", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "净化我的", "purge_my", SwitchButtonHolder.TYPE_SWITCH))
@@ -211,13 +205,13 @@ class TSPreference : XposedContext(), IHooker {
         preferenceLayout.addView(SwitchButtonHolder(activity, "过滤帖子回复", "content_filter", SwitchButtonHolder.TYPE_DIALOG))
         preferenceLayout.addView(SwitchButtonHolder(activity, "过滤用户", "user_filter", SwitchButtonHolder.TYPE_DIALOG))
 
-        preferenceLayout.addView(createTextView(if (isPurgeEnabled) "别出新意" else "增加功能"))
+        preferenceLayout.addView(createTextView("增加功能"))
         preferenceLayout.addView(SwitchButtonHolder(activity, "浏览历史增加搜索", "history_cache", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "楼层增加点按效果", "ripple", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "长按下载保存全部图片", "save_images", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "弹窗自由复制", "select_clipboard", SwitchButtonHolder.TYPE_SWITCH))
 
-        preferenceLayout.addView(createTextView(if (isPurgeEnabled) "垂手可得" else "自动化"))
+        preferenceLayout.addView(createTextView("自动化"))
 
         val autoSign = SwitchButtonHolder(activity, "自动签到", "auto_sign", SwitchButtonHolder.TYPE_SWITCH)
         autoSign.setOnButtonClickListener { _ ->
@@ -258,7 +252,7 @@ class TSPreference : XposedContext(), IHooker {
         preferenceLayout.addView(originSrcButton)
         preferenceLayout.addView(originSrcOnlyWifiButton)
 
-        preferenceLayout.addView(createTextView(if (isPurgeEnabled) "奇怪怪" else "其它"))
+        preferenceLayout.addView(createTextView("其它"))
         preferenceLayout.addView(SwitchButtonHolder(activity, "隐藏小红点", "red_tip", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "禁用更新提示", "remove_update", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "禁用帖子手势", "forbid_gesture", SwitchButtonHolder.TYPE_SWITCH))
@@ -277,7 +271,7 @@ class TSPreference : XposedContext(), IHooker {
             })
         })
 
-        preferenceLayout.addView(createTextView(if (isPurgeEnabled) "关于就是关于" else "关于"))
+        preferenceLayout.addView(createTextView("关于"))
 
         // Upstream only credited GM here. Keep the original credit, but make it clear which
         // fork is actually running and where users of this fork should go for help.
@@ -307,14 +301,7 @@ class TSPreference : XposedContext(), IHooker {
         })
 
         preferenceLayout.addView(createButton("原作者", "GM · 上游项目", true) { _ ->
-            sCount++
-            if (sCount % 3 == 0) {
-                showTbToast(randomToast(), TbToast.LENGTH_SHORT)
-            }
-            if (!isPurgeEnabled && sCount >= 10) {
-                putPurgeEnabled()
-                activity.recreate()
-            }
+            openUri(activity, strings["upstream_uri"])
         })
 
         preferenceLayout.addView(createButton("源代码", "AIKA1024/TiebaTS", true) { _ ->
@@ -383,13 +370,11 @@ class TSPreference : XposedContext(), IHooker {
     }
 
     private fun createHidePreference(activity: Activity): LinearLayout {
-        val isPurgeEnabled = getIsPurgeEnabled()
         val preferenceLayout = PreferenceLayout(activity)
-        if (isPurgeEnabled || BuildConfig.DEBUG) {
-            preferenceLayout.addView(createTextView("隐藏设置"))
-            preferenceLayout.addView(SwitchButtonHolder(activity, if (isPurgeEnabled) "藏起尾巴" else "隐藏模块", "hide", SwitchButtonHolder.TYPE_SWITCH))
-            preferenceLayout.addView(SwitchButtonHolder(activity, if (isPurgeEnabled) "藏起尾巴（原生）" else "隐藏模块（原生）", "hide_native", SwitchButtonHolder.TYPE_SWITCH))
-        }
+        // Easter egg removed: the hide-module switches are always visible in release builds too.
+        preferenceLayout.addView(createTextView("隐藏设置"))
+        preferenceLayout.addView(SwitchButtonHolder(activity, "隐藏模块", "hide", SwitchButtonHolder.TYPE_SWITCH))
+        preferenceLayout.addView(SwitchButtonHolder(activity, "隐藏模块（原生）", "hide_native", SwitchButtonHolder.TYPE_SWITCH))
 
         preferenceLayout.addView(createTextView("检测设置"))
         preferenceLayout.addView(SwitchButtonHolder(activity, "检测 Xposed", "check_xposed", SwitchButtonHolder.TYPE_SWITCH))
@@ -397,7 +382,7 @@ class TSPreference : XposedContext(), IHooker {
         preferenceLayout.addView(SwitchButtonHolder(activity, "检测堆栈（重启才能真正生效）", "check_stack_trace", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(
             createButton(
-                if (isPurgeEnabled) "捏捏尾巴" else "检测模块",
+                "检测模块",
                 Process.myPid().toString(),
                 true
             ) { _ -> TraceChecker(preferenceLayout).checkAll() })
@@ -414,6 +399,5 @@ class TSPreference : XposedContext(), IHooker {
         private const val PROXY_ACTIVITY = "com.baidu.tieba.setting.more.MoreActivity"
         private const val ENTRY_TAG = "gm.tieba.tabswitch.ts_pref_entry"
         private const val ENTRY_INDEX = 11
-        private var sCount = 0
     }
 }

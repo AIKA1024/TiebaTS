@@ -45,7 +45,6 @@ import gm.tieba.tabswitch.widget.TbToast.Companion.showTbToast
 import java.lang.ref.WeakReference
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
-import java.util.Random
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
@@ -194,17 +193,6 @@ object TSPreferenceHelper : XposedContext() {
         } catch (tr: Throwable) {
             // Losing only the cosmetic refresh must never break button creation.
             XposedBridge.log(tr)
-        }
-    }
-
-    fun randomToast(): String {
-        return when (Random().nextInt(5)) {
-            0 -> "别点了，新版本在做了"
-            1 -> "别点了别点了T_T"
-            2 -> "再点人傻了>_<"
-            3 -> "点了也没用~"
-            4 -> "点个小星星吧:)"
-            else -> ""
         }
     }
 

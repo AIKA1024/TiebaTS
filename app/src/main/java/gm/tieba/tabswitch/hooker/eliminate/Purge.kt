@@ -305,10 +305,9 @@ class Purge : XposedContext(), IHooker, Obfuscated {
             activity?.finish()
         }
 
-        // 首页推荐右侧悬浮
-        findClass("com.baidu.tbadk.widget.RightFloatLayerView").declaredMethods.filter { method ->
-            method.parameterTypes.isEmpty() && method.returnType == Boolean::class.javaPrimitiveType
-        }.forEach { method -> hookReplaceMethod(method) { false } }
+        // 首页/帖子右侧悬浮红包广告统一由 PurgeFloatAd 处理（默认启用、可单独开关）。
+        // 旧实现把 RightFloatLayerView 的所有无参 boolean 方法强制返回 false，
+        // 既与新 Hooker 重复，又可能误伤其它判断，故不再在此注册。
 
         // 更多板块 (吧友直播，友情吧), 一键签到页面广告
         val jsPurgeScript = getAssetFileContent("Purge.js")
