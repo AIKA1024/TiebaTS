@@ -340,7 +340,7 @@ class TSPreference : XposedContext(), IHooker {
                 目标客户端：百度贴吧 %s 及以上版本，更早版本不受支持。
                 作用域：com.baidu.tieba。
 
-                23 条 DexKit 规则中有 5 条在 22.13.1.1 上失效，模块会降级运行；
+                21 条 DexKit 规则中有 5 条在 22.13.1.1 上失效，模块会降级运行；
                 部分功能效果仍需实机逐项验证，详见仓库 README。
                 """.trimIndent().format(Locale.CHINA, BuildConfig.TARGET_VERSION),
                 strings["fork_uri"]

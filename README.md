@@ -78,7 +78,7 @@
 - 24 条规则中有 **6 条在 22.13.1.1 上失效**（`MetaData->getBazhuGradeData`、`AlaLiveTipView.<init>`、
   `dimen.tbds400`、`purge_enter_on_success`、`PersonOftenFuncItemView.<init>`、
   `AdAppStateManager.instance`），模块按设计降级继续运行而不是整体停摆。
-  *清理老版本兼容后规则数变为 23 条、失效 5 条（见下节）。*
+  *清理老版本兼容后规则数变为 23 条、失效 5 条；再移除两条 12.x 编辑器规则后为 21 条、失效 5 条（见下节）。*
 - **设置入口注入成功**：贴吧「设置」页出现「贴吧TS设置」；接受使用协议后可打开完整设置页，
   开关显示与点击写入均正常（`TS_preferences.xml` 正确落盘）。设置页现由
   `MoreActivity.onCreate` 单一路径渲染。
@@ -121,7 +121,9 @@
   贴吧版本判断（Android 14 的 `SDK_INT` 判断保留）。
 - 已确认在 22.13.1.1 不存在的旧类名：`SecretSettingActivity`、`RecommendForumRespondedMessage`、
   `ForumRecommend.DataRes$Builder`、`pb.pb.sub.SubPbLayout`，以及老代理 Activity 的构造函数式 hook。
-- `MIN_VERSION` 从 `22.0.0.0` 收紧到 `22.13.1.1`；规则数从 24 降到 23（失效 6 → 5）。
+- `MIN_VERSION` 从 `22.0.0.0` 收紧到 `22.13.1.1`；规则数从 24 降到 21（失效 6 → 5）。
+- `Purge` 中两条 12.x 编辑器规则（`SpriteMemePan.<init>` 返回 null、「准备展示精灵动画提示控件」
+  返回 false）会破坏 22.13.1.1 的 `PbNewInputContainerV2` 初始化，已一并移除。
 
 **保留**的是 22.13.1.1 实测需要的容错：反混淆规则缺失降级、方法/字段签名候选
 （`Switch`、`AutoRefresh`、`HistoryCache`、`RedTip`、`FrsTab` 的 ViewPager 类型）、闪屏 hook 的可选包装。
@@ -132,16 +134,16 @@
 - **楼层点按效果（Ripple）**：新版贴吧重构了楼中楼布局，即使探测到候选类也可能无法生效，需实机调整。
 - **关注吧缓存**：依赖 protobuf 字段名 `like_forum`；22.13.1.1 上未找到对应 Builder，日志会提示跳过该功能。
 - **5 条 DexKit 规则失效**（见上）：影响对应反混淆定位的功能，模块会降级运行。
-- **隐藏的「真正的净化界面」开关（`purge`）在 22.13.1.1 上会让帖子页崩溃**：实机堆栈为
-  `PbNewInputContainerV2.l0 -> RelativeLayout.getParent() on a null object reference`，
-  怀疑是 `Purge` 里两条 12.x 时代的编辑器规则（`SpriteMemePan.<init>` 返回 null、
-  「准备展示精灵动画提示控件」返回 false）打断了新版输入框初始化。该开关默认关闭且需连点
-  「作者」10 次才会显示，**请勿开启**；悬浮广告净化不依赖它。后续版本会单独处理这两条老规则。
+- **「真正的净化界面」开关（`purge`）曾导致帖子页崩溃，现已修复**：原崩溃点为
+  `PbNewInputContainerV2.l0 -> RelativeLayout.getParent()` 空指针，元凶是 `Purge` 里两条
+  12.x 编辑器规则（`SpriteMemePan.<init>` 返回 null、「准备展示精灵动画提示控件」返回 false），
+  已移除。实机在 `purge=true` 下两次进入 PbActivity 均无崩溃、无异常堆栈；悬浮广告净化不依赖它。
+  该开关仍默认关闭、需连点「作者」10 次才会显示，净化功能本身尚未逐项验证效果。
 - **native 库编译 arm64-v8a 与 x86_64**；32 位设备只有 DexKit 的预编译库，`libhide` / `libcheck` 不可用。
 - 需 **LSPosed 2.1.0+**（API 102）。2.0.3 及更早版本提供的是 API 101，会因 `minApiVersion=102` 拒绝加载；
   KernelSU 3.x 还需单独安装 ZygiskNext，否则框架不会注入 zygote。
 - 模块不再包含旧框架入口，降级安装旧版 LSPosed 会导致模块无法加载。
-- 23 条 DexKit 规则与部分硬编码类名仍需在每个新版贴吧上重新校验；本仓库的校验基准是 22.13.1.1。
+- 21 条 DexKit 规则与部分硬编码类名仍需在每个新版贴吧上重新校验；本仓库的校验基准是 22.13.1.1。
 
 ## 功能
 

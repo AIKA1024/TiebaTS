@@ -33,16 +33,18 @@ class Purge : XposedContext(), IHooker, Obfuscated {
     }
 
     override fun matchers(): List<Matcher> {
+        // Intentionally absent: the 12.x-era editor rules SpriteMemePan.<init> (return null)
+        // and "准备展示精灵动画提示控件" (return false). Their replacements break
+        // PbNewInputContainerV2#setFromType on 22.13.1.1 (RelativeLayout.getParent() NPE),
+        // so they must not be re-added when syncing with upstream.
         return listOf(
             SmaliMatcher("Lcom/baidu/tieba/recapp/lego/model/AdCard;-><init>(Lorg/json/JSONObject;)V"),
             SmaliMatcher("Lcom/baidu/tieba/lego/card/model/BaseCardInfo;-><init>(Lorg/json/JSONObject;)V"),
             StringMatcher("pic_amount"),
-            StringMatcher("准备展示精灵动画提示控件"),
             StringMatcher("bottom_bubble_config"),
 //            StringMatcher("top_level_navi"),
             StringMatcher("index_tab_info"),
             SmaliMatcher("Lcom/baidu/tbadk/coreExtra/floatCardView/AlaLiveTipView;-><init>(Landroid/content/Context;)V"),
-            SmaliMatcher("Lcom/baidu/tbadk/editortools/meme/pan/SpriteMemePan;-><init>(Landroid/content/Context;)V"),
             StringMatcher("h5_pop_ups_config")
         )
     }
@@ -63,14 +65,6 @@ class Purge : XposedContext(), IHooker, Obfuscated {
                     findClass(clazz).declaredMethods.filter { md ->
                         md.parameterTypes.contentToString().contains("JSONObject") && md.name != method
                     }.forEach { md -> hookReplaceMethod(md) { null } }
-
-                // 吧内%s新贴热议中
-                "准备展示精灵动画提示控件" ->
-                    XposedBridge.hookAllMethods(
-                        findClass(clazz),
-                        method,
-                        XC_MethodReplacement.returnConstant(false)
-                    )
 
                 // 底部导航栏活动图标
                 "bottom_bubble_config" ->
@@ -116,10 +110,6 @@ class Purge : XposedContext(), IHooker, Obfuscated {
                 // 首页左上直播
                 "Lcom/baidu/tbadk/coreExtra/floatCardView/AlaLiveTipView;-><init>(Landroid/content/Context;)V" ->
                     hookReplaceMethod(clazz, method, "android.view.ViewGroup") { null }
-
-                // 点我快速配图经验+3
-                "Lcom/baidu/tbadk/editortools/meme/pan/SpriteMemePan;-><init>(Landroid/content/Context;)V" ->
-                    hookReplaceMethod(clazz, method, "android.content.Context") { null }
 
                 // 各种云控弹窗
                 "h5_pop_ups_config" -> if (method == "invoke") {
