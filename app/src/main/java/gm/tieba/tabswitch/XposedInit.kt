@@ -60,6 +60,7 @@ import gm.tieba.tabswitch.hooker.eliminate.FrsPageFilter
 import gm.tieba.tabswitch.hooker.eliminate.PersonalizedFilter
 import gm.tieba.tabswitch.hooker.eliminate.Purge
 import gm.tieba.tabswitch.hooker.eliminate.PurgeEnter
+import gm.tieba.tabswitch.hooker.eliminate.PurgeFloatAd
 import gm.tieba.tabswitch.hooker.eliminate.PurgeMy
 import gm.tieba.tabswitch.hooker.eliminate.PurgeVideo
 import gm.tieba.tabswitch.hooker.eliminate.RedTip
@@ -143,6 +144,12 @@ class XposedInit : XposedModule() {
 
             attachBaseContext((param.args[0] as Application))
             Preferences.init(getContext())
+            // New in 4.0.0-beta.19: hide the right-side floating ad out of the box, while
+            // keeping it switchable in the preference page. Writing the default once also keeps
+            // the switch UI in sync with the actual hook state.
+            if (!getAll().containsKey(PurgeFloatAd.KEY)) {
+                putBoolean(PurgeFloatAd.KEY, true)
+            }
             AcRules.init(getContext())
             DeobfuscationHelper.sCurrentTbVersion = getTbVersion(getContext())
             XposedBridge.log("TB client detected, version ${DeobfuscationHelper.sCurrentTbVersion}")
@@ -163,6 +170,7 @@ class XposedInit : XposedModule() {
             val hookers: List<IHooker> = listOf(
                 TSPreference(),
                 FragmentTab(),
+                PurgeFloatAd(),
                 Purge(),
                 PurgeEnter(),
                 PurgeMy(),
