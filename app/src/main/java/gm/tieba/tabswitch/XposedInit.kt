@@ -60,6 +60,7 @@ import gm.tieba.tabswitch.hooker.eliminate.FrsPageFilter
 import gm.tieba.tabswitch.hooker.eliminate.PersonalizedFilter
 import gm.tieba.tabswitch.hooker.eliminate.Purge
 import gm.tieba.tabswitch.hooker.eliminate.PurgeEnter
+import gm.tieba.tabswitch.hooker.eliminate.PurgeFeedAd
 import gm.tieba.tabswitch.hooker.eliminate.PurgeFloatAd
 import gm.tieba.tabswitch.hooker.eliminate.PurgeMy
 import gm.tieba.tabswitch.hooker.eliminate.PurgeVideo
@@ -150,6 +151,11 @@ class XposedInit : XposedModule() {
             if (!getAll().containsKey(PurgeFloatAd.KEY)) {
                 putBoolean(PurgeFloatAd.KEY, true)
             }
+            // Hide the in-feed native ad cards (below the first post / between comments)
+            // out of the box too, with its own switch in the preference page.
+            if (!getAll().containsKey(PurgeFeedAd.KEY)) {
+                putBoolean(PurgeFeedAd.KEY, true)
+            }
             AcRules.init(getContext())
             DeobfuscationHelper.sCurrentTbVersion = getTbVersion(getContext())
             XposedBridge.log("TB client detected, version ${DeobfuscationHelper.sCurrentTbVersion}")
@@ -171,6 +177,7 @@ class XposedInit : XposedModule() {
                 TSPreference(),
                 FragmentTab(),
                 PurgeFloatAd(),
+                PurgeFeedAd(),
                 Purge(),
                 PurgeEnter(),
                 PurgeMy(),

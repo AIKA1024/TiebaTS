@@ -106,12 +106,21 @@
   `com.baidu.tbadk.widget.RightFloatLayerView` 从 `V.E ... 0,0-264,343`（可见）变为
   `G.E ... 0,0-0,0`（GONE），「广告」文本节点从 UI 层级消失，截图无红包；开关可正常
   切换并落盘，两轮设置页往返无回归。
-- **删除彩蛋与冗余的悬浮广告 hook（待发布，2026-11-10）**：`Purge.kt` 中把
+- **删除彩蛋与冗余的悬浮广告 hook（4.0.0-beta.20，2026-11-10）**：`Purge.kt` 中把
   `RightFloatLayerView` 的所有无参 boolean 方法强制返回 `false` 的旧 hook 与 `PurgeFloatAd`
   功能重复且写法粗暴，已删除，红包浮层统一由默认启用的 `PurgeFloatAd` 负责。同时移除
   「连点原作者 10 次」彩蛋（`ze` 配置、俏皮分组标题、随机 Toast 与解锁逻辑）：
   「真正的净化界面」开关、「隐藏模块」/「隐藏模块（原生）」开关改为设置页常驻显示，
   分组标题与按钮文案统一恢复常规；「原作者」按钮改为打开上游仓库。
+- **去掉帖子内信息流广告（4.0.0-beta.20，2026-11-10，真机 OnePlus 7 Pro / LSPosed 2.2.0 API 102）**：
+  新增 `PurgeFeedAd` Hooker，默认启用且设置页有独立开关「隐藏帖子内广告」。目标是
+  `com.baidu.tieba.funad.view.FeedAdxNativePbView`（主楼下方）、
+  `com.baidu.tieba.feed.ad.compact.DelegateFunAdView` 与
+  `com.baidu.tieba.funad.view.FeedAdxNativeCommentView`（评论区），
+  构造后置 `GONE` 并全局拦截 `View.setVisibility`；不新增 DexKit 规则。
+  同一帖子前后对比：`FeedAdxNativePbView` 从 `VFE ... 0,1497-1440,2604`（高 1107）变为
+  `G ... 0,0-0,0`，外层 `DelegateFunAdView` 高度收敛为 0，「广告 / 梦幻西游 / 立即下载」
+  文本节点全部消失，评论自然顶上、无空白占位，无 FATAL 与 `Reject hook`。
 
 > 以上仍是**加载链路与设置页**的验证，不代表 31 项功能逐项在新版贴吧上生效（例如净化效果、
 > 过滤规则的实际表现）仍需在日常使用中观察。
