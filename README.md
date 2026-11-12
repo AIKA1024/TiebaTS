@@ -113,7 +113,8 @@
   「真正的净化界面」开关、「隐藏模块」/「隐藏模块（原生）」开关改为设置页常驻显示，
   分组标题与按钮文案统一恢复常规；「原作者」按钮改为打开上游仓库。
 - **去掉帖子内信息流广告（4.0.0-beta.20，2026-11-10，真机 OnePlus 7 Pro / LSPosed 2.2.0 API 102）**：
-  新增 `PurgeFeedAd` Hooker，默认启用且设置页有独立开关「隐藏帖子内广告」。目标是
+  新增 `PurgeFeedAd` Hooker，默认启用且设置页有独立开关「隐藏信息流广告」（初版文案为
+  「隐藏帖子内广告」）。目标是
   `com.baidu.tieba.funad.view.FeedAdxNativePbView`（主楼下方）、
   `com.baidu.tieba.feed.ad.compact.DelegateFunAdView` 与
   `com.baidu.tieba.funad.view.FeedAdxNativeCommentView`（评论区），
@@ -121,6 +122,16 @@
   同一帖子前后对比：`FeedAdxNativePbView` 从 `VFE ... 0,1497-1440,2604`（高 1107）变为
   `G ... 0,0-0,0`，外层 `DelegateFunAdView` 高度收敛为 0，「广告 / 梦幻西游 / 立即下载」
   文本节点全部消失，评论自然顶上、无空白占位，无 FATAL 与 `Reject hook`。
+- **隐藏首页推荐流横幅广告（待发布，2026-11-12）**：用户反馈的「参与2026TGA提名预测
+  瓜分千元京东卡」横幅，位于首页「推荐」信息流两条帖子之间，定位为
+  `com.baidu.tieba.feed.component.CardBannerView`（1080 宽设备上约 1038×226，自带关闭 X）。
+  它是 `com.baidu.tieba.feed.card.FeedCardView` 这个 RecyclerView item 的内层 View，资源 id
+  同样被混淆。扩展现有 `PurgeFeedAd`（不新增 DexKit 规则、不新增开关）：构造后置 `GONE` +
+  拦截 `setVisibility`，并额外折叠仍承载 banner 的外层 `FeedCardView`，避免 item 留下空白占位；
+  折叠前会检查卡片内确实存在广告 View，回收复用成普通帖子时不会误伤。
+  *该运营 banner 由服务端按频次下发，本轮多次刷新 / 切 tab 均未再次出现，未能做实机前后截图
+  对比。只隐藏 banner 的初版装过 debug 包（模块加载正常、无 FATAL）；最终加入外层卡片折叠的
+  版本仅完成构建与 APK 静态校验，尚未实机安装，待广告再次下发时验证「无留白」。*
 
 > 以上仍是**加载链路与设置页**的验证，不代表 31 项功能逐项在新版贴吧上生效（例如净化效果、
 > 过滤规则的实际表现）仍需在日常使用中观察。

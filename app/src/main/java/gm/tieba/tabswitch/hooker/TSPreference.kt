@@ -196,7 +196,7 @@ class TSPreference : XposedContext(), IHooker {
         // Easter egg removed: the full Purge hooker switch is always visible.
         preferenceLayout.addView(SwitchButtonHolder(activity, "真正的净化界面", "purge", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "隐藏右侧悬浮广告", PurgeFloatAd.KEY, SwitchButtonHolder.TYPE_SWITCH))
-        preferenceLayout.addView(SwitchButtonHolder(activity, "隐藏帖子内广告", PurgeFeedAd.KEY, SwitchButtonHolder.TYPE_SWITCH))
+        preferenceLayout.addView(SwitchButtonHolder(activity, "隐藏信息流广告", PurgeFeedAd.KEY, SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "净化进吧", "purge_enter", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "净化我的", "purge_my", SwitchButtonHolder.TYPE_SWITCH))
         preferenceLayout.addView(SwitchButtonHolder(activity, "默认折叠置顶帖", "fold_top_card_view", SwitchButtonHolder.TYPE_SWITCH))
