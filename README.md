@@ -122,7 +122,7 @@
   同一帖子前后对比：`FeedAdxNativePbView` 从 `VFE ... 0,1497-1440,2604`（高 1107）变为
   `G ... 0,0-0,0`，外层 `DelegateFunAdView` 高度收敛为 0，「广告 / 梦幻西游 / 立即下载」
   文本节点全部消失，评论自然顶上、无空白占位，无 FATAL 与 `Reject hook`。
-- **隐藏首页推荐流横幅广告（待发布，2026-11-12）**：用户反馈的「参与2026TGA提名预测
+- **隐藏首页推荐流横幅广告（4.0.0-beta.21，2026-11-14）**：用户反馈的「参与2026TGA提名预测
   瓜分千元京东卡」横幅，位于首页「推荐」信息流两条帖子之间，定位为
   `com.baidu.tieba.feed.component.CardBannerView`（1080 宽设备上约 1038×226，自带关闭 X）。
   它是 `com.baidu.tieba.feed.card.FeedCardView` 这个 RecyclerView item 的内层 View，资源 id

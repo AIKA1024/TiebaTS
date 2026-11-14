@@ -18,8 +18,8 @@ android {
         // Published builds come from GitHub Releases. Pin both version fields to the source
         // tree so rebuilding from a release tag yields the same APK and can upgrade over it.
         // The old git-count scheme produced different codes locally and in shallow CI clones.
-        versionCode = 4000020
-        versionName = "4.0.0-beta.20"
+        versionCode = 4000021
+        versionName = "4.0.0-beta.21"
         // Only Tieba 22.13.1.1 (APK built 2026-10-27) and newer are supported. Older 22.0.x
         // and 12.x clients are intentionally out of scope; no version-gated rules remain.
         buildConfigField("String", "TARGET_VERSION", "\"22.13.1.1\"")
